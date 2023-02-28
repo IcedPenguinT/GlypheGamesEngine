@@ -5,7 +5,7 @@ typedef struct PlatformState {
     void* InternalState;
 } PlatformState;
 
-KAPI b8 PlatformStartup(
+b8 PlatformStartup(
     PlatformState* platState,
     const char* applicationName,
     i32 x,
@@ -14,9 +14,9 @@ KAPI b8 PlatformStartup(
     i32 height
 );
 
-KAPI void PlatformShutdown(PlatformState* platState);
+void PlatformShutdown(PlatformState* platState);
 
-KAPI b8 PlatformPumpMessages(PlatformState* platState);
+b8 PlatformPumpMessages(PlatformState* platState);
 
 void* PlatformAllocate(u64 size, b8 aligned);
 void PlatformFree(void* block, b8 aligned);

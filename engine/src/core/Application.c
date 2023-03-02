@@ -5,6 +5,7 @@
 #include "platform/Platform.h"
 #include "core/Memory.h"
 #include "core/Event.h"
+#include "core/Input.h"
 
 
 typedef struct ApplicationState {
@@ -29,6 +30,7 @@ b8 CreateApplication(Game* gameInst){
     appState.gameInst = gameInst;
 
     InitializeLogging();
+    InputInitialize();
 
     appState.isRunning = TRUE;
     appState.isSuspended = FALSE;
@@ -60,21 +62,27 @@ b8 RunApplication() {
         if (!PlatformPumpMessages(&appState.platfrom))
             appState.isRunning = FALSE;
 
-        if (!appState.gameInst->update(appState.gameInst, (f32)0)) {
-            KFATAL("Game update failed, shutting down.");
-            appState.isRunning = FALSE;
-            break;
-        }
+        if (!appState.isSuspended) {
+            if (!appState.gameInst->update(appState.gameInst, (f32)0)) {
+                KFATAL("Game update failed, shutting down.");
+                appState.isRunning = FALSE;
+                break;
+            }
 
-        if (!appState.gameInst->render(appState.gameInst, (f32)0)) {
-            KFATAL("Game render failed, shutting down.");
-            appState.isRunning = FALSE;
-            break;
+            if (!appState.gameInst->render(appState.gameInst, (f32)0)) {
+                KFATAL("Game render failed, shutting down.");
+                appState.isRunning = FALSE;
+                break;
+            }
+
+            // Input will always be checked at the end.
+            InputUpdate(0);
         }
     }
     appState.isRunning = FALSE;
 
     EventShutdown();
+    InputShutdown();
 
     PlatformShutdown(&appState.platfrom);
     return TRUE;

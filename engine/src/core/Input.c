@@ -134,7 +134,7 @@ void InputProcessButton(Buttons button, b8 pressed) {
 void InputProcessMouseMove(i16 x, i16 y) {
     if (state.mouseCurrent.x != x || state.mouseCurrent.y != y) {
         // NOTE: Enable this line if debugging.
-        KDEBUG("Mouse pos: %i, %i!", x, y);
+        //KDEBUG("Mouse pos: %i, %i!", x, y);
 
         state.mouseCurrent.x = x;
         state.mouseCurrent.y = y;

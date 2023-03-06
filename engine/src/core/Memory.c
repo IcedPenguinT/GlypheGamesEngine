@@ -1,6 +1,7 @@
 #include "Memory.h"
 
 #include "core/Logger.h"
+#include "core/String.h"
 #include "platform/Platform.h"
 
 #include <string.h>
@@ -107,6 +108,6 @@ char* GetMemoryUsageStr() {
         i32 length = snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", MemoryTagStrings[i], amount, unit);
         offset += length;
     }
-    char* outString = _strdup(buffer);
+    char* outString = StringDuplicate(buffer);
     return outString;
 }

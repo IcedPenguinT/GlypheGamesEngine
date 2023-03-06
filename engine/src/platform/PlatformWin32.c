@@ -3,6 +3,7 @@
 #if KPLATFORM_WINDOWS
 
 #include "core/Logger.h"
+#include "core/Input.h"
 #include <windows.h>
 #include <windowsx.h>
 #include <stdlib.h>
@@ -197,20 +198,24 @@ LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM l
         case WM_KEYUP:
         case WM_SYSKEYUP: {
             // Key pressed/released
-            //b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
-            // TODO: input processing
+            b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+            Keys key = (u16)wParam;
+
+            InputProcessKey(key, pressed);
         } break;
         case WM_MOUSEMOVE: {
-            //i32 xPosition = GET_X_LPARAM(lParam);
-            //i32 yPositiion = GET_Y_LPARAM(lParam);
-            // TODO: input processing
+            i32 xPosition = GET_X_LPARAM(lParam);
+            i32 yPosition = GET_Y_LPARAM(lParam);
+            
+            InputProcessMouseMove(xPosition, yPosition);
         }
         case WM_MOUSEWHEEL: {
-            //i32 zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-            //if (zDelta != 0) {
-                //zDelta = (zDelta < 0) ? -1 : 1;
-            //}
-            // TODO: input processing
+            i32 zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+            if (zDelta != 0) {
+                zDelta = (zDelta < 0) ? -1 : 1;
+
+                InputProcessMouseWheel(zDelta);
+            }
         } break;
         case WM_LBUTTONDOWN:
         case WM_MBUTTONDOWN:
@@ -218,8 +223,26 @@ LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM l
         case WM_LBUTTONUP:
         case WM_MBUTTONUP:
         case WM_RBUTTONUP: {
-            //b8 pressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
-            // TODO: input processing
+            b8 pressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
+            
+            Buttons mouseButton = BUTTON_MAX_BUTTONS;
+            switch (msg) {
+                case WM_LBUTTONDOWN:
+                case WM_LBUTTONUP:
+                    mouseButton = BUTTON_LEFT;
+                    break;
+                case WM_MBUTTONDOWN:
+                case WM_MBUTTONUP:
+                    mouseButton = BUTTON_MIDDLE;
+                    break;
+                case WM_RBUTTONDOWN:
+                case WM_RBUTTONUP:
+                    mouseButton = BUTTON_RIGHT;
+                    break;
+            }
+
+            if (mouseButton != BUTTON_MAX_BUTTONS)
+                InputProcessButton(mouseButton, pressed);
         } break;
     }
 

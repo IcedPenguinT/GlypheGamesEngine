@@ -6,6 +6,9 @@
 #include "core/Memory.h"
 #include "core/Event.h"
 #include "core/Input.h"
+#include "core/Clock.h"
+
+#include "renderer/RendererFrontend.h"
 
 
 typedef struct ApplicationState {
@@ -15,6 +18,7 @@ typedef struct ApplicationState {
     PlatformState platfrom;
     i16 width;
     i16 height;
+    Clock clock;
     f64 lastTime;
 } ApplicationState;
 
@@ -51,6 +55,11 @@ b8 CreateApplication(Game* gameInst){
         return FALSE;
     }
 
+    if (!RendererInitialize(gameInst->config.name, &appState.platfrom)){
+        KFATAL("Failed to initialize renderer. Aborting application.");
+        return FALSE;
+    }
+
     if (!appState.gameInst->initialize(appState.gameInst)){
         KFATAL("Game failed to Initialize!");
         return FALSE;
@@ -63,6 +72,14 @@ b8 CreateApplication(Game* gameInst){
 }
 
 b8 RunApplication() {
+    ClockStart(&appState.clock);
+    ClockUpdate(&appState.clock);
+
+    appState.lastTime = appState.clock.elapsed;
+    f64 runningTime = 0;
+    u8 frameCount = 0;
+    f64 targetFrameSeconds = 1.0f / 60;
+
     KINFO(GetMemoryUsageStr())
 
     while (appState.isRunning) {
@@ -70,20 +87,45 @@ b8 RunApplication() {
             appState.isRunning = FALSE;
 
         if (!appState.isSuspended) {
-            if (!appState.gameInst->update(appState.gameInst, (f32)0)) {
+            ClockUpdate(&appState.clock);
+            f64 currentTime = appState.clock.elapsed;
+            f64 delta = (currentTime - appState.lastTime);
+            f64 frameStartTime = PlatformGetAbsoluteTime();
+
+            if (!appState.gameInst->update(appState.gameInst, (f32)delta)) {
                 KFATAL("Game update failed, shutting down.");
                 appState.isRunning = FALSE;
                 break;
             }
 
-            if (!appState.gameInst->render(appState.gameInst, (f32)0)) {
+            if (!appState.gameInst->render(appState.gameInst, (f32)delta)) {
                 KFATAL("Game render failed, shutting down.");
                 appState.isRunning = FALSE;
                 break;
             }
 
+            //TODO:
+            RenderPacket packet;
+            packet.deltaTime = delta;
+            RendererDrawFrame(&packet);
+
+            f64 frameEndTime = PlatformGetAbsoluteTime();
+            f64 frameElapsedTime = frameEndTime - frameStartTime;
+            runningTime += frameElapsedTime;
+            f64 remainingSeconds = targetFrameSeconds - frameElapsedTime;
+
+            if (remainingSeconds > 0){
+                u64 remainingMs = (remainingSeconds * 1000);
+                b8 limitFrames = FALSE;
+                if (remainingMs > 0 && limitFrames)
+                    PlatformSleep(remainingMs - 1);
+                frameCount++;
+            }
+
             // Input will always be checked at the end.
-            InputUpdate(0);
+            InputUpdate(delta);
+
+            appState.lastTime = currentTime;
         }
     }
     appState.isRunning = FALSE;
@@ -94,6 +136,7 @@ b8 RunApplication() {
 
     EventShutdown();
     InputShutdown();
+    RendererShutdown();
 
     PlatformShutdown(&appState.platfrom);
     return TRUE;

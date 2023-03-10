@@ -13,3 +13,7 @@ char* StringDuplicate(const char* str) {
     CopyMemory(copy, str, length + 1);
     return copy;
 }
+
+b8 StringEqual(const char* str0, const char* str1) {
+    return strcmp(str0, str1) == 0;
+}

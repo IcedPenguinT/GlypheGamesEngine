@@ -4,9 +4,12 @@
 
 #include "core/Logger.h"
 #include "core/Input.h"
+#include "containers/Darray.h"
+
 #include <windows.h>
 #include <windowsx.h>
 #include <stdlib.h>
+
 
 typedef struct InternalState {
     HINSTANCE hInstance;
@@ -166,12 +169,16 @@ void PlatformConsoleWriteError(const char* message, u8 colour) {
 
 f64 PlatformGetAbsoluteTime() {
     LARGE_INTEGER nowTime;
-    QueryPerformanceFrequency(&nowTime);
+    QueryPerformanceCounter(&nowTime);
     return (f64)nowTime.QuadPart * clockFrequency;
 }
 
 void PlatformSleep(u64 ms) {
     Sleep(ms);
+}
+
+void PlatformGetRequiredExtensionNames(const char*** namesDarray){
+    DarrayPush(*namesDarray, &"VK_KHR_win32_surface");
 }
 
 LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM lParam) {

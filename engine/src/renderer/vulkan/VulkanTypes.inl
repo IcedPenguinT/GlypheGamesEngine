@@ -67,6 +67,13 @@ typedef struct VulkanRenderpass {
     VulkanRenderPassState state;
 } VulkanRenderpass;
 
+typedef struct VulkanFramebuffer {
+    VkFramebuffer handle;
+    u32 attachmentCount;
+    VkImageView* attachments;
+    VulkanRenderpass* renderpass;
+} VulkanFramebuffer;
+
 typedef struct VulkanSwapchain {
     VkSurfaceFormatKHR imageFormat;
     u8 maxFramesInFlight;
@@ -76,6 +83,8 @@ typedef struct VulkanSwapchain {
     VkImageView* views;
 
     VulkanImage depthAttachment;
+
+    VulkanFramebuffer* framebuffers;
 } VulkanSwapchain;
 
 typedef enum VulkanCommandBufferState {
@@ -93,6 +102,11 @@ typedef struct VulkanCommandBuffer {
     // Command buffer state.
     VulkanCommandBufferState state;
 } VulkanCommandBuffer;
+
+typedef struct VulkanFence {
+    VkFence handle;
+    b8 isSignaled;
+} VulkanFence;
 
 typedef struct VulkanContext {
     u32 framebufferWidth;
@@ -114,6 +128,18 @@ typedef struct VulkanContext {
     VulkanRenderpass mainRenderpass;
 
     VulkanCommandBuffer* graphicsCommandBuffers;
+
+        // darray
+    VkSemaphore* imageAvailableSemaphores;
+
+    // darray
+    VkSemaphore* queueCompleteSemaphores;
+
+    u32 inFlightFenceCount;
+    VulkanFence* inFlightFences;
+
+    // Holds pointers to fences which exist and are owned elsewhere.
+    VulkanFence** imagesInFlight;
 
     i32 (*FindMemoryIndex)(u32 typeFilter, u32 propertyFlags);
 } VulkanContext;

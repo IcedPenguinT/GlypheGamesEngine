@@ -25,8 +25,8 @@ typedef struct ApplicationState {
 static b8 initialized = FALSE;
 static ApplicationState appState = {0};
 
-b8 applicationOnEvent(u16 code, void* sender, void* listnerInst, EventContext context);
-b8 applicationOnKey(u16 code, void* sender, void* listnerInst, EventContext context);
+b8 ApplicationOnEvent(u16 code, void* sender, void* listnerInst, EventContext context);
+b8 ApplicationOnKey(u16 code, void* sender, void* listnerInst, EventContext context);
 
 b8 CreateApplication(Game* gameInst){
     if (initialized){
@@ -47,9 +47,9 @@ b8 CreateApplication(Game* gameInst){
         return FALSE;
     }
 
-    EventRegister(EVENT_CODE_APPLICATION_QUIT, 0, applicationOnEvent);
-    EventRegister(EVENT_CODE_KEY_PRESSED, 0, applicationOnKey);
-    EventRegister(EVENT_CODE_BUTTON_RELEASED, 0, applicationOnKey);
+    EventRegister(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
+    EventRegister(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
+    EventRegister(EVENT_CODE_BUTTON_RELEASED, 0, ApplicationOnKey);
 
     if (!PlatformStartup(&appState.platfrom, gameInst->config.name, gameInst->config.startPosX, gameInst->config.startPosY, gameInst->config.startWidth, gameInst->config.startHeight)) {
         return FALSE;
@@ -130,9 +130,9 @@ b8 RunApplication() {
     }
     appState.isRunning = FALSE;
 
-    EventUnregister(EVENT_CODE_APPLICATION_QUIT, 0, applicationOnEvent);
-    EventUnregister(EVENT_CODE_KEY_PRESSED, 0, applicationOnKey);
-    EventUnregister(EVENT_CODE_BUTTON_RELEASED, 0, applicationOnKey);
+    EventUnregister(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
+    EventUnregister(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
+    EventUnregister(EVENT_CODE_BUTTON_RELEASED, 0, ApplicationOnKey);
 
     EventShutdown();
     InputShutdown();
@@ -142,7 +142,12 @@ b8 RunApplication() {
     return TRUE;
 }
 
-b8 applicationOnEvent(u16 code, void* sender, void* listnerInst, EventContext context) {
+void ApplicationGetFramebufferSize(u32* width, u32* height) {
+    *width = appState.width;
+    *height = appState.height;
+}
+
+b8 ApplicationOnEvent(u16 code, void* sender, void* listnerInst, EventContext context) {
     switch (code) {
         case EVENT_CODE_APPLICATION_QUIT: {
             KINFO("EVENT_CODE_APPLICATION_QUIT received, shutting down.\n");
@@ -153,7 +158,7 @@ b8 applicationOnEvent(u16 code, void* sender, void* listnerInst, EventContext co
     return FALSE;
 }
 
-b8 applicationOnKey(u16 code, void* sender, void* listnerInst, EventContext context) {
+b8 ApplicationOnKey(u16 code, void* sender, void* listnerInst, EventContext context) {
     if (code == EVENT_CODE_KEY_PRESSED) {
         u16 keyCode = context.Data.u16[0];
         if (keyCode == KEY_ESCAPE) {

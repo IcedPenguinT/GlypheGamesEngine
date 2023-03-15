@@ -40,7 +40,6 @@ b8 VulkanSwapchainAquireNextImageIndex(
     VkSemaphore imageAvailableSemaphore,
     VkFence fence,
     u32* outImageIndex) {
-
     VkResult result = vkAcquireNextImageKHR(
         context->device.logicalDevice,
         swapchain->handle,
@@ -68,7 +67,6 @@ void VulkanSwapchainPresent(
     VkQueue presentQueue,
     VkSemaphore renderCompleteSemaphore,
     u32 presentImageIndex) {
-
     // Return the image to the swapchain for presentation.
     VkPresentInfoKHR presentInfo = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     presentInfo.waitSemaphoreCount = 1;
@@ -85,6 +83,8 @@ void VulkanSwapchainPresent(
     } else if (result != VK_SUCCESS) {
         KFATAL("Failed to present swap chain image!");
     }
+    // Increment (and loop) the index.
+    context->currentFrame = (context->currentFrame + 1) % swapchain->maxFramesInFlight;
 }
 
 void Create(VulkanContext* context, u32 width, u32 height, VulkanSwapchain* swapchain) {

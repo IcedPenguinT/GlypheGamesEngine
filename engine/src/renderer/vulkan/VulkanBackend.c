@@ -1,17 +1,27 @@
 #include "VulkanBackend.h"
-#include "core/Logger.h"
-#include "core/String.h"
-#include "containers/Darray.h"
-
 #include "VulkanTypes.inl"
 #include "VulkanPlatform.h"
+#include "VulkanDevice.h"
+#include "VulkanSwapchain.h"
+
+#include "core/Logger.h"
+#include "containers/Darray.h"
+#include "core/String.h"
+
+#include "platform/Platform.h"
 
 static VulkanContext context;
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback (VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
         const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData);
 
+i32 FindMemoryIndex(u32 typeFilter, u32 propertyFlags);
+
+
+
 b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applicationName, struct PlatformState* platState) {
+    context.FindMemoryIndex = FindMemoryIndex;
+    
     // TODO: custom allocator.
     context.allocator = 0;
 
@@ -98,12 +108,40 @@ b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applica
     KDEBUG("Vulkan debugger created");
 #endif
 
+    KDEBUG("Creating Vulkan Surface...");
+    if (!PlatformCreateVulkanSurface(platState, &context)) {
+        KERROR("Failed to create platform surface!");
+        return FALSE;
+    }
+    KDEBUG("Vulkan surface created.");
+
+    if (!VulkanDeviceCreate(&context)){
+        KERROR("Failed to create Device!");
+        return FALSE;
+    }
+
+    VulkanSwapchainCreate(
+        &context,
+        context.framebufferWidth,
+        context.framebufferHeight,
+        &context.swapchain);
 
     KINFO("Vulkan renderer initialized successfully.");
     return TRUE;
 }
 
 void VulkanRendererBackendShutdown(RendererBackend* backend) {
+    VulkanSwapchainDestroy(&context, &context.swapchain);
+
+    KDEBUG("Destroying Vulkan device...");
+    VulkanDeviceDestroy(&context);
+    
+    KDEBUG("Destroying Vulkan surface...");
+    if (context.surface) {
+        vkDestroySurfaceKHR(context.instance, context.surface, context.allocator);
+        context.surface = 0;
+    }
+
     KDEBUG("Destroying vulkan debugger...");
     if (context.debugMessenger) {
         PFN_vkDestroyDebugUtilsMessengerEXT func =
@@ -145,4 +183,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback (VkDebugUtilsMessageSeverityFlagB
             break;
     }
     return VK_FALSE;
+}
+
+i32 FindMemoryIndex(u32 typeFilter, u32 propertyFlags) {
+    VkPhysicalDeviceMemoryProperties memoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(context.device.physicalDevice, &memoryProperties);
+
+    for (u32 i = 0; i < memoryProperties.memoryTypeCount; ++i) {
+        // Check each memory type to see if its bit is set to 1.
+        if (typeFilter & (1 << i) && (memoryProperties.memoryTypes[i].propertyFlags & propertyFlags) == propertyFlags) {
+            return i;
+        }
+    }
+
+    KWARNING("Unable to find suitable memory type!");
+    return -1;
 }

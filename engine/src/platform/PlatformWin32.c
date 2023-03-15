@@ -10,10 +10,15 @@
 #include <windowsx.h>
 #include <stdlib.h>
 
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_win32.h>
+#include "renderer/vulkan/VulkanTypes.inl"
+
 
 typedef struct InternalState {
     HINSTANCE hInstance;
     HWND hwnd;
+    VkSurfaceKHR surface;
 } InternalState;
 
 static f64 clockFrequency;
@@ -179,6 +184,24 @@ void PlatformSleep(u64 ms) {
 
 void PlatformGetRequiredExtensionNames(const char*** namesDarray){
     DarrayPush(*namesDarray, &"VK_KHR_win32_surface");
+}
+
+b8 PlatformCreateVulkanSurface(struct PlatformState* platState, struct VulkanContext* context) {
+    InternalState* state = (InternalState*)platState->InternalState;
+
+    VkWin32SurfaceCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
+    createInfo.hinstance = state->hInstance;
+    createInfo.hwnd = state->hwnd;
+
+    VkResult result = vkCreateWin32SurfaceKHR(context->instance, &createInfo, context->allocator, &state->surface);
+    if (result != VK_SUCCESS) {
+        KFATAL("Vulkan surface creation failed.");
+        return FALSE;
+    }
+
+    context->surface = state->surface;
+    return TRUE;
+
 }
 
 LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM lParam) {

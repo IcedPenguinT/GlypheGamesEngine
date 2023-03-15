@@ -3,6 +3,7 @@
 #include "VulkanPlatform.h"
 #include "VulkanDevice.h"
 #include "VulkanSwapchain.h"
+#include "VulkanRenderpass.h"
 
 #include "core/Logger.h"
 #include "containers/Darray.h"
@@ -126,11 +127,20 @@ b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applica
         context.framebufferHeight,
         &context.swapchain);
 
+    VulkanRenderpassCreate(
+        &context,
+        &context.mainRenderpass,
+        0, 0, context.framebufferWidth, context.framebufferHeight,
+        0.0f, 0.0f, 0.2f, 1.0f,
+        1.0f, 0);
+
     KINFO("Vulkan renderer initialized successfully.");
     return TRUE;
 }
 
 void VulkanRendererBackendShutdown(RendererBackend* backend) {
+    // Destroy in the opposite order of creation.
+    VulkanRenderpassDestroy(&context, &context.mainRenderpass);
     VulkanSwapchainDestroy(&context, &context.swapchain);
 
     KDEBUG("Destroying Vulkan device...");

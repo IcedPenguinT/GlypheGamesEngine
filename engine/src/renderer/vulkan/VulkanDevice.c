@@ -122,7 +122,7 @@ b8 VulkanDeviceCreate(VulkanContext* context) {
     return TRUE;
 }
 
-void VulkanDeviceDestory(VulkanContext* context) {
+void VulkanDeviceDestroy(VulkanContext* context) {
     context->device.graphicsQueue = 0;
     context->device.presentQueue = 0;
     context->device.transferQueue = 0;

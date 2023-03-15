@@ -4,10 +4,12 @@
 #include "VulkanDevice.h"
 #include "VulkanSwapchain.h"
 #include "VulkanRenderpass.h"
+#include "VulkanCommandBuffer.h"
 
 #include "core/Logger.h"
 #include "containers/Darray.h"
 #include "core/String.h"
+#include "core/Memory.h"
 
 #include "platform/Platform.h"
 
@@ -18,7 +20,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback (VkDebugUtilsMessageSeverityFlagB
 
 i32 FindMemoryIndex(u32 typeFilter, u32 propertyFlags);
 
-
+void CreateCommandBuffers(RendererBackend* backend);
 
 b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applicationName, struct PlatformState* platState) {
     context.FindMemoryIndex = FindMemoryIndex;
@@ -134,12 +136,28 @@ b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applica
         0.0f, 0.0f, 0.2f, 1.0f,
         1.0f, 0);
 
+    CreateCommandBuffers(backend);
+
     KINFO("Vulkan renderer initialized successfully.");
     return TRUE;
 }
 
 void VulkanRendererBackendShutdown(RendererBackend* backend) {
     // Destroy in the opposite order of creation.
+    for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
+        if (context.graphicsCommandBuffers[i].handle) {
+            VulkanCommandBufferFree(
+                &context,
+                context.device.graphicsCommandPool,
+                &context.graphicsCommandBuffers[i]
+                );
+            context.graphicsCommandBuffers[i].handle = 0;
+        }
+    }
+
+    DarrayDestory(context.graphicsCommandBuffers);
+    context.graphicsCommandBuffers = 0;
+
     VulkanRenderpassDestroy(&context, &context.mainRenderpass);
     VulkanSwapchainDestroy(&context, &context.swapchain);
 
@@ -208,4 +226,31 @@ i32 FindMemoryIndex(u32 typeFilter, u32 propertyFlags) {
 
     KWARNING("Unable to find suitable memory type!");
     return -1;
+}
+
+
+void CreateCommandBuffers(RendererBackend* backend) {
+    if (!context.graphicsCommandBuffers) {
+        context.graphicsCommandBuffers = DarrayReserve(VulkanCommandBuffer, context.swapchain.imageCount);
+        for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
+            ZeroMemory(&context.graphicsCommandBuffers[i], sizeof(VulkanCommandBuffer));
+        }
+    }
+
+    for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
+        if (context.graphicsCommandBuffers[i].handle) {
+            VulkanCommandBufferFree(
+                &context,
+                context.device.graphicsCommandPool,
+                &context.graphicsCommandBuffers[i]);
+        }
+        ZeroMemory(&context.graphicsCommandBuffers[i], sizeof(VulkanCommandBuffer));
+        VulkanCommandBufferAllocate(
+            &context,
+            context.device.graphicsCommandPool,
+            TRUE,
+            &context.graphicsCommandBuffers[i]);
+    }
+
+    KDEBUG("Vulkan command buffers created.");
 }

@@ -101,14 +101,14 @@ void VulkanRenderpassCreate(
         &outRenderpass->handle));
 }
 
-void VulkanRenderpass_destroy(VulkanContext* context, VulkanRenderpass* renderpass) {
+void VulkanRenderpassDestroy(VulkanContext* context, VulkanRenderpass* renderpass) {
     if (renderpass && renderpass->handle) {
         vkDestroyRenderPass(context->device.logicalDevice, renderpass->handle, context->allocator);
         renderpass->handle = 0;
     }
 }
 
-void VulkanRenderpass_begin(
+void VulkanRenderpassBegin(
     VulkanCommandBuffer* commandBuffer,
     VulkanRenderpass* renderpass,
     VkFramebuffer frameBuffer) {
@@ -137,7 +137,7 @@ void VulkanRenderpass_begin(
     commandBuffer->state = COMMAND_BUFFER_STATE_IN_RENDER_PASS;
 }
 
-void VulkanRenderpass_end(VulkanCommandBuffer* commandBuffer, VulkanRenderpass* renderpass) {
+void VulkanRenderpassEnd(VulkanCommandBuffer* commandBuffer, VulkanRenderpass* renderpass) {
     vkCmdEndRenderPass(commandBuffer->handle);
     commandBuffer->state = COMMAND_BUFFER_STATE_RECORDING;
 }

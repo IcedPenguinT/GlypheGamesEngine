@@ -34,7 +34,7 @@ b8 EventInitialize() {
 void EventShutdown() {
     for (u16 i = 0; i < MAX_MESSAGE_CODES; ++i) {
         if (state.registerd[i].events != 0) {
-            DarrayDestory(state.registerd[i].events);
+            DarrayDestroy(state.registerd[i].events);
             state.registerd[i].events = 0;
         }
     }

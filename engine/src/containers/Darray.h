@@ -32,7 +32,7 @@ KAPI void* _darrayInsertAt(void* array, u64 index, void* valuePtr);
 #define DarrayReserve(type, capacity)   \
     _darrayCreate(capacity, sizeof(type))
 
-#define DarrayDestory(array) _darrayDestroy(array);
+#define DarrayDestroy(array) _darrayDestroy(array);
 
 #define DarrayPush(array, value)        \
 {                                       \

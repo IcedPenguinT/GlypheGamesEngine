@@ -6,7 +6,7 @@
 #include "VulkanImage.h"
 
 void Create(VulkanContext* context, u32 width, u32 height, VulkanSwapchain* swapchain);
-void Destory(VulkanContext* context, VulkanSwapchain* swapchain);
+void Destroy(VulkanContext* context, VulkanSwapchain* swapchain);
 
 void VulkanSwapchainCreate(
     VulkanContext* context,
@@ -23,17 +23,17 @@ void VulkanSwapchainRecreate(
     u32 height,
     VulkanSwapchain* swapchain) {
     // Destroy the old and Create a new one.
-    Destory(context, swapchain);
+    Destroy(context, swapchain);
     Create(context, width, height, swapchain);
 }
 
 void VulkanSwapchainDestroy(
     VulkanContext* context,
     VulkanSwapchain* swapchain) {
-    Destory(context, swapchain);
+    Destroy(context, swapchain);
 }
 
-b8 VulkanSwapchainAquireNextImageIndex(
+b8 VulkanSwapchainAcquireNextImageIndex(
     VulkanContext* context,
     VulkanSwapchain* swapchain,
     u64 timeoutNs,
@@ -224,10 +224,11 @@ void Create(VulkanContext* context, u32 width, u32 height, VulkanSwapchain* swap
     KINFO("Swapchain created successfully.");
 }
 
-void Destory(VulkanContext* context, VulkanSwapchain* swapchain) {
+void Destroy(VulkanContext* context, VulkanSwapchain* swapchain) {
+    vkDeviceWaitIdle(context->device.logicalDevice);
     VulkanImageDestroy(context, &swapchain->depthAttachment);
 
-    // Only Destory the views, not the images, since those are owned by the swapchain and are thus
+    // Only Destroy the views, not the images, since those are owned by the swapchain and are thus
     // destroyed when it is.
     for (u32 i = 0; i < swapchain->imageCount; ++i) {
         vkDestroyImageView(context->device.logicalDevice, swapchain->views[i], context->allocator);

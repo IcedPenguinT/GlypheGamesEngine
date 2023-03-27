@@ -4,6 +4,7 @@
 
 #include "core/Logger.h"
 #include "core/Input.h"
+#include "core/Event.h"
 #include "containers/Darray.h"
 
 #include <windows.h>
@@ -216,12 +217,17 @@ LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM l
             PostQuitMessage(0);
             return 0;
         case WM_SIZE: {
-            //RECT r;
-            //GetCLientRect(hwnd, &r);
-            //u32 width = r.right -r.left;
-            //u32 height = r.bottom - r.top;
+            RECT r;
+            GetClientRect(hwnd, &r);
+            u32 width = r.right - r.left;
+            u32 height = r.bottom - r.top;
 
-            // TODO: Fire event for window resize;
+            // Fire the event. The application layer should pick this up, but not handle it
+            // as it shouldn be visible to other parts of the application.
+            EventContext context;
+            context.Data.u16[0] = (u16)width;
+            context.Data.u16[1] = (u16)height;
+            EventFire(EVENT_CODE_RESIZED, 0, context);
         } break;
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:

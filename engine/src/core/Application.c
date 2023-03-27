@@ -27,6 +27,8 @@ static ApplicationState appState = {0};
 
 b8 ApplicationOnEvent(u16 code, void* sender, void* listnerInst, EventContext context);
 b8 ApplicationOnKey(u16 code, void* sender, void* listnerInst, EventContext context);
+b8 ApplicationOnResized(u16 code, void* sender, void* listnerInst, EventContext context);
+
 
 b8 CreateApplication(Game* gameInst){
     if (initialized){
@@ -50,6 +52,7 @@ b8 CreateApplication(Game* gameInst){
     EventRegister(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
     EventRegister(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
     EventRegister(EVENT_CODE_BUTTON_RELEASED, 0, ApplicationOnKey);
+    EventRegister(EVENT_CODE_RESIZED, 0, ApplicationOnResized);
 
     if (!PlatformStartup(&appState.platfrom, gameInst->config.name, gameInst->config.startPosX, gameInst->config.startPosY, gameInst->config.startWidth, gameInst->config.startHeight)) {
         return FALSE;
@@ -178,5 +181,37 @@ b8 ApplicationOnKey(u16 code, void* sender, void* listnerInst, EventContext cont
             KDEBUG("'%c' key released in window.", keyCode);
         }
     }
+    return FALSE;
+}
+
+b8 ApplicationOnResized(u16 code, void* sender, void* listnerInst, EventContext context) {
+    if (code == EVENT_CODE_RESIZED) {
+        u16 width = context.Data.u16[0];
+        u16 height = context.Data.u16[1];
+
+        // Check if different. If so, trigger a resize event.
+        if (width != appState.width || height != appState.height) {
+            appState.width = width;
+            appState.height = height;
+
+            KDEBUG("Window resize: %i, %i", width, height);
+
+            // Handle minimization
+            if (width == 0 || height == 0) {
+                KINFO("Window minimized, suspending application.");
+                appState.isSuspended = TRUE;
+                return TRUE;
+            } else {
+                if (appState.isSuspended) {
+                    KINFO("Window restored, resuming application.");
+                    appState.isSuspended = FALSE;
+                }
+                appState.gameInst->onResize(appState.gameInst, width, height);
+                RendererOnResized(width, height);
+            }
+        }
+    }
+
+    // Event purposely not handled to allow other listeners to get this.
     return FALSE;
 }

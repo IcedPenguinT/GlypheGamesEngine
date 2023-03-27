@@ -35,7 +35,11 @@ b8 RendererEndFrame(f32 deltaTime) {
 }
 
 void RendererOnResized(u16 width, u16 height) {
-    
+    if (backend) {
+        backend->resized(backend, width, height);
+    } else {
+        KWARNING("renderer backend does not exist to accept resize: %i %i", width, height);
+    }
 }
 
 b8 RendererDrawFrame(RenderPacket* packet) {

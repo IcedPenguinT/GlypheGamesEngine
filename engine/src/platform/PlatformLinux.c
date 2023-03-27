@@ -221,6 +221,17 @@ b8 PlatformPumpMessages(PlatformState* platState) {
                 InputProcessMouseMove(move_event->event_x, move_event->event_y);
                 break;
             case XCB_CONFIGURE_NOTIFY: {
+                // Resizing - note that this is also triggered by moving the window, but should be
+                // passed anyway since a change in the x/y could mean an upper-left resize.
+                // The application layer can decide what to do with this.
+                xcb_configure_notify_event_t *configure_event = (xcb_configure_notify_event_t *)event;
+
+                // Fire the event. The application layer should pick this up, but not handle it
+                // as it shouldn be visible to other parts of the application.
+                event_context context;
+                context.Data.u16[0] = configure_event->width;
+                context.Data.u16[1] = configure_event->height;
+                EventFire(EVENT_CODE_RESIZED, 0, context);
 
             } break;
             case XCB_CLIENT_MESSAGE: {
@@ -234,7 +245,7 @@ b8 PlatformPumpMessages(PlatformState* platState) {
                 break;
         }
 
-        free(event);
+        Free(event);
     }
     return !quitFlagged;
 }

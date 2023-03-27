@@ -111,6 +111,15 @@ typedef struct VulkanFence {
 typedef struct VulkanContext {
     u32 framebufferWidth;
     u32 framebufferHeight;
+
+    // Current generation of framebuffer size. If it does not match framebuffer_size_lastGeneration,
+    // a new one should be generated.
+    u64 framebufferSizeGeneration;
+
+    // The generation of the framebuffer when it was last created. Set to framebufferSizeGeneration
+    // when updated.
+    u64 framebufferSizeLastGeneration;
+
     VkInstance instance;
     VkAllocationCallbacks* allocator;
     VkSurfaceKHR surface;

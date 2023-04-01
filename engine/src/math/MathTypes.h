@@ -30,10 +30,7 @@ typedef union Vector3Union {
 } Vector3;
 
 typedef union Vector4Union {
-    #if defined(KUSE_SIMD)
-        alignas(16) __m128 data;
-    #endif
-        alignas(16) f32 elements[4];
+    f32 elements[4];
     union {
         struct {
             union {
@@ -52,4 +49,8 @@ typedef union Vector4Union {
     };
 } Vector4;
 
-typedef Vector4 quaternion;
+typedef Vector4 Quaternion;
+
+typedef union Matrix4Union {
+    f32 data[16];
+} Matrix4;

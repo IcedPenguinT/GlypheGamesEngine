@@ -1,12 +1,9 @@
 #pragma once
 #include "Defines.h"
 
-typedef struct PlatformState {
-    void* InternalState;
-} PlatformState;
-
-b8 PlatformStartup(
-    PlatformState* platState,
+b8 PlatformSystemStartup(
+    u64* memoryRequirment,
+    void* state,
     const char* applicationName,
     i32 x,
     i32 y,
@@ -14,9 +11,9 @@ b8 PlatformStartup(
     i32 height
 );
 
-void PlatformShutdown(PlatformState* platState);
+void PlatformSystemShutdown(void* platState);
 
-b8 PlatformPumpMessages(PlatformState* platState);
+b8 PlatformPumpMessages();
 
 void* PlatformAllocate(u64 size, b8 aligned);
 void PlatformFree(void* block, b8 aligned);

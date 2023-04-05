@@ -34,7 +34,7 @@ b8 PhysicalDeviceMeetsRequirements(
 
 b8 VulkanDeviceCreate(VulkanContext* context) {
     if (!SelectPhysicalDevice(context)) {
-        return FALSE;
+        return false;
     }
 
      KINFO("Creating logical device...");
@@ -48,7 +48,7 @@ b8 VulkanDeviceCreate(VulkanContext* context) {
     if (!transferSharesGraphicsQueue) {
         indexCount++;
     }
-    u32 indices[indexCount];
+    u32 indices[32];
     u8 index = 0;
     indices[index++] = context->device.graphicsQueueIndex;
     if (!presentSharesGraphicsQueue) {
@@ -58,7 +58,7 @@ b8 VulkanDeviceCreate(VulkanContext* context) {
         indices[index++] = context->device.transferQueueIndex;
     }
 
-    VkDeviceQueueCreateInfo queueCreateInfos[indexCount];
+    VkDeviceQueueCreateInfo queueCreateInfos[32];
     for (u32 i = 0; i < indexCount; ++i) {
         queueCreateInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queueCreateInfos[i].queueFamilyIndex = indices[i];
@@ -129,7 +129,7 @@ b8 VulkanDeviceCreate(VulkanContext* context) {
         &context->device.graphicsCommandPool));
     KINFO("Graphics command pool created.");
 
-    return TRUE;
+    return true;
 }
 
 void VulkanDeviceDestroy(VulkanContext* context) {
@@ -243,14 +243,14 @@ b8 VulkanDeviceDetectDepthFormat(VulkanDevice* device) {
 
         if ((properties.linearTilingFeatures & flags) == flags) {
             device->depthFormat = candidates[i];
-            return TRUE;
+            return true;
         } else if ((properties.optimalTilingFeatures & flags) == flags) {
             device->depthFormat = candidates[i];
-            return TRUE;
+            return true;
         }
     }
 
-    return FALSE;
+    return false;
 }
 
 b8 SelectPhysicalDevice(VulkanContext* context) {
@@ -258,10 +258,11 @@ b8 SelectPhysicalDevice(VulkanContext* context) {
     VK_CHECK(vkEnumeratePhysicalDevices(context->instance, &physicalDeviceCount, 0));
     if (physicalDeviceCount == 0) {
         KFATAL("No devices which support Vulkan were found.");
-        return FALSE;
+        return false;
     }
 
-    VkPhysicalDevice physicalDevice[physicalDeviceCount];
+    const u32 maxDeviceCount = 32;
+    VkPhysicalDevice physicalDevice[maxDeviceCount];
     VK_CHECK(vkEnumeratePhysicalDevices(context->instance, &physicalDeviceCount, physicalDevice));
     for (u32 i = 0; i < physicalDeviceCount; ++i) {
         VkPhysicalDeviceProperties properties;
@@ -276,13 +277,13 @@ b8 SelectPhysicalDevice(VulkanContext* context) {
         // TODO: These requirements should probably be driven by engine
         // configuration.
         vulkan_physical_device_requirements requirements = {};
-        requirements.graphics = TRUE;
-        requirements.present = TRUE;
-        requirements.transfer = TRUE;
+        requirements.graphics = true;
+        requirements.present = true;
+        requirements.transfer = true;
         // NOTE: Enable this if compute will be required.
-        // requirements.compute = TRUE;
-        requirements.samplerAnisotropy = TRUE;
-        requirements.discreteGpu = TRUE;
+        // requirements.compute = true;
+        requirements.samplerAnisotropy = true;
+        requirements.discreteGpu = true;
         requirements.deviceExtensionNames = DarrayCreate(const char*);
         DarrayPush(requirements.deviceExtensionNames, &VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -358,11 +359,11 @@ b8 SelectPhysicalDevice(VulkanContext* context) {
     // Ensure a device was selected
     if (!context->device.physicalDevice) {
         KERROR("No physical devices were found which meet the requirements.");
-        return FALSE;
+        return false;
     }
 
     KINFO("Physical device selected.");
-    return TRUE;
+    return true;
 }
 
 b8 PhysicalDeviceMeetsRequirements(
@@ -383,13 +384,13 @@ b8 PhysicalDeviceMeetsRequirements(
     if (requirements->discreteGpu) {
         if (properties->deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
             KINFO("Device is not a discrete GPU, and one is required. Skipping.");
-            return FALSE;
+            return false;
         }
     }
 
     u32 queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, 0);
-    VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+    VkQueueFamilyProperties queueFamilies[32];
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 
     // Look at each queue and see what queues it supports
@@ -461,7 +462,7 @@ b8 PhysicalDeviceMeetsRequirements(
                 Free(outSwapchainSupport->presentModes, sizeof(VkPresentModeKHR) * outSwapchainSupport->presentModeCount, MEMORY_TAG_RENDERER);
             }
             KINFO("Required swapchain support not present, skipping device.");
-            return FALSE;
+            return false;
         }
 
         // Device extensions.
@@ -483,10 +484,10 @@ b8 PhysicalDeviceMeetsRequirements(
 
                 u32 requiredExtensionsCount = DarrayLength(requirements->deviceExtensionNames);
                 for (u32 i = 0; i < requiredExtensionsCount; ++i) {
-                    b8 found = FALSE;
+                    b8 found = false;
                     for (u32 j = 0; j < availableExtensionsCount; ++j) {
                         if (StringEqual(requirements->deviceExtensionNames[i], availableExtensions[j].extensionName)) {
-                            found = TRUE;
+                            found = true;
                             break;
                         }
                     }
@@ -494,7 +495,7 @@ b8 PhysicalDeviceMeetsRequirements(
                     if (!found) {
                         KINFO("Required extension not found: '%s', skipping device.", requirements->deviceExtensionNames[i]);
                         Free(availableExtensions, sizeof(VkExtensionProperties) * availableExtensionsCount, MEMORY_TAG_RENDERER);
-                        return FALSE;
+                        return false;
                     }
                 }
             }
@@ -504,12 +505,12 @@ b8 PhysicalDeviceMeetsRequirements(
         // Sampler anisotropy
         if (requirements->samplerAnisotropy && !features->samplerAnisotropy) {
             KINFO("Device does not support samplerAnisotropy, skipping.");
-            return FALSE;
+            return false;
         }
 
         // Device meets all requirements.
-        return TRUE;
+        return true;
     }
 
-    return FALSE;
+    return false;
 }

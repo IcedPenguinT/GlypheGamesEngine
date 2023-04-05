@@ -4,39 +4,54 @@
 #include "core/Logger.h"
 #include "core/Memory.h"
 
-static RendererBackend* backend = 0;
+typedef struct RendererSystemState {
+    RendererBackend backend;
+} RendererSystemState;
 
-b8 RendererInitialize(const char* applicationName, struct PlatformState* platState) {
-    backend = Allocate(sizeof(RendererBackend), MEMORY_TAG_RENDERER);
+static RendererSystemState* statePtr;
 
-    RendererBackendCreate(RENDERER_BACKEND_TYPE_VULKAN, platState, backend);
-    backend->frameNumber = 0;
+b8 RendererSystemInitialize(u64* memoryRequirment, void* state, const char* applicationName) {
+    *memoryRequirment = sizeof(RendererSystemState);
+    if (state == 0) 
+        return true;
+    statePtr = state;
+    RendererBackendCreate(RENDERER_BACKEND_TYPE_VULKAN, &statePtr->backend);
+    //RendererBackendCreate(RENDERER_BACKEND_TYPE_VULKAN, &statePtr->backend);
+    statePtr->backend.frameNumber = 0;
 
-    if (!backend->initialize(backend, applicationName, platState)) {
+    if (!statePtr->backend.initialize(&statePtr->backend, applicationName)) {
         KFATAL("Renderer backend failed to initialize. Shutting down.");
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
-void RendererShutdown(){
-    backend->shutdown(backend);
-    Free(backend, sizeof(RendererBackend), MEMORY_TAG_RENDERER);
+void RendererSystemShutdown(void* state){
+    if (statePtr) {
+        statePtr->backend.shutdown(&statePtr->backend);
+    }
+    statePtr = 0;
 }
 
 b8 RendererBeginFrame(f32 deltaTime){
-    return backend->beginFrame(backend, deltaTime);
+    if (!statePtr) {
+        return false;
+    }
+    return statePtr->backend.beginFrame(&statePtr->backend, deltaTime);
 }
 
 b8 RendererEndFrame(f32 deltaTime) {
-    b8 result = backend->endFrame(backend, deltaTime);
-    backend->frameNumber++;
+    if (!statePtr) {
+        return false;
+    }
+    b8 result = statePtr->backend.endFrame(&statePtr->backend, deltaTime);
+    statePtr->backend.frameNumber++;
     return result;
 }
 
 void RendererOnResized(u16 width, u16 height) {
-    if (backend) {
-        backend->resized(backend, width, height);
+    if (statePtr) {
+        statePtr->backend.resized(&statePtr->backend, width, height);
     } else {
         KWARNING("renderer backend does not exist to accept resize: %i %i", width, height);
     }
@@ -48,8 +63,8 @@ b8 RendererDrawFrame(RenderPacket* packet) {
 
         if (!result){
             KERROR("RendererEndFrame failed. Application shutting down...");
-            return FALSE;
+            return false;
         }
     }
-    return TRUE;
+    return true;
 }

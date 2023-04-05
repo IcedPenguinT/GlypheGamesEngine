@@ -16,39 +16,52 @@
 #include "renderer/vulkan/VulkanTypes.inl"
 
 
-typedef struct InternalState {
+typedef struct PlatformState {
     HINSTANCE hInstance;
     HWND hwnd;
     VkSurfaceKHR surface;
-} InternalState;
+} PlatformState;
 
+static PlatformState *statePtr;
 static f64 clockFrequency;
 static LARGE_INTEGER startTime;
 
+
 LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM lParam);
 
-b8 PlatformStartup(
-    PlatformState* platState,
+void ClockSetup() {
+    LARGE_INTEGER frequency;
+    QueryPerformanceFrequency(&frequency);
+    clockFrequency = 1.0 / (f64)frequency.QuadPart;
+    QueryPerformanceCounter(&startTime);
+}
+
+b8 PlatformSystemStartup(
+    u64 *memoryRequirement,
+    void *state,
     const char* applicationName,
     i32 x,
     i32 y,
     i32 width,
     i32 height
 ) {
-    platState->InternalState = malloc(sizeof(InternalState));
-    InternalState *state = (InternalState *)platState->InternalState;
+    *memoryRequirement = sizeof(PlatformState);
+    if (state == 0) {
+        return true;
+    }
+    statePtr = state;
+    statePtr->hInstance = GetModuleHandleA(0);
 
-    state->hInstance = GetModuleHandleA(0);
 
     // Setup and register window class
-    HICON icon = LoadIcon(state->hInstance, IDI_APPLICATION);
+    HICON icon = LoadIcon(statePtr->hInstance, IDI_APPLICATION);
     WNDCLASSA wc;
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_DBLCLKS;
     wc.lpfnWndProc = Win32ProcessMessage;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
-    wc.hInstance = state->hInstance;
+    wc.hInstance = statePtr->hInstance;
     wc.hIcon = icon;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = NULL;
@@ -56,7 +69,7 @@ b8 PlatformStartup(
 
     if (!RegisterClassA(&wc)) {
         MessageBoxA(0, "Window registration failed", "Error", MB_ICONEXCLAMATION | MB_OK);
-        return FALSE;
+        return false;
     }
 
     //Create window
@@ -89,46 +102,43 @@ b8 PlatformStartup(
     HWND handle = CreateWindowExA(
         windowExStyle, "GlypheGames", applicationName,
         windowStyle, windowX, windowY, windowWidth, windowHeight,
-        0, 0, state->hInstance, 0
+        0, 0, statePtr->hInstance, 0
     );
 
     if (handle == 0) {
         MessageBoxA(NULL, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
         KFATAL("Window creation failed!");
-        return FALSE;
+        return false;
     } else {
-        state->hwnd = handle;
+        statePtr->hwnd = handle;
     }
 
     b32 shouldActivate = 1; //TODO: This should be false.
     i32 showWindowCommandFlags = shouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
-    ShowWindow(state->hwnd, showWindowCommandFlags);
+    ShowWindow(statePtr->hwnd, showWindowCommandFlags);
 
-    LARGE_INTEGER frequency;
-    QueryPerformanceFrequency(&frequency);
-    clockFrequency = 1.0 / (f64)frequency.QuadPart;
-    QueryPerformanceFrequency(&startTime);
+    ClockSetup();
 
-    return TRUE;
+    return true;
 }
 
-void PlatformShutdown(PlatformState *platState){
-    InternalState *state = (InternalState *)platState->InternalState;
-
-    if (state->hwnd) {
-        DestroyWindow(state->hwnd);
-        state->hwnd = 0;
+void PlatformSystemShutdown(void *platState){
+    if (statePtr && statePtr->hwnd) {
+        DestroyWindow(statePtr->hwnd);
+        statePtr->hwnd = 0;
     }
 }
 
-b8 PlatformPumpMessages(PlatformState* platState) {
-    MSG message;
-    while (PeekMessageA(&message, NULL, 0, 0, PM_REMOVE)) {
-        TranslateMessage(&message);
-        DispatchMessageA(&message);
+b8 PlatformPumpMessages() {
+    if (statePtr) {
+        MSG message;
+        while (PeekMessageA(&message, NULL, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&message);
+            DispatchMessageA(&message);
+        }
     }
 
-    return TRUE;
+    return true;
 }
 
 void* PlatformAllocate(u64 size, b8 aligned) {
@@ -174,6 +184,9 @@ void PlatformConsoleWriteError(const char* message, u8 colour) {
 }
 
 f64 PlatformGetAbsoluteTime() {
+    if (!clockFrequency)
+        ClockSetup();
+
     LARGE_INTEGER nowTime;
     QueryPerformanceCounter(&nowTime);
     return (f64)nowTime.QuadPart * clockFrequency;
@@ -187,21 +200,21 @@ void PlatformGetRequiredExtensionNames(const char*** namesDarray){
     DarrayPush(*namesDarray, &"VK_KHR_win32_surface");
 }
 
-b8 PlatformCreateVulkanSurface(struct PlatformState* platState, struct VulkanContext* context) {
-    InternalState* state = (InternalState*)platState->InternalState;
-
+b8 PlatformCreateVulkanSurface(VulkanContext *context) {
+    if (!statePtr) 
+        return false;
     VkWin32SurfaceCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-    createInfo.hinstance = state->hInstance;
-    createInfo.hwnd = state->hwnd;
+    createInfo.hinstance = statePtr->hInstance;
+    createInfo.hwnd = statePtr->hwnd;
 
-    VkResult result = vkCreateWin32SurfaceKHR(context->instance, &createInfo, context->allocator, &state->surface);
+    VkResult result = vkCreateWin32SurfaceKHR(context->instance, &createInfo, context->allocator, &statePtr->surface);
     if (result != VK_SUCCESS) {
         KFATAL("Vulkan surface creation failed.");
-        return FALSE;
+        return false;
     }
 
-    context->surface = state->surface;
-    return TRUE;
+    context->surface = statePtr->surface;
+    return true;
 
 }
 
@@ -237,8 +250,23 @@ LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM l
             b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
             Keys key = (u16)wParam;
 
+            b8 isExtended = (HIWORD(lParam) & KF_EXTENDED) == KF_EXTENDED;
+
+            if (wParam == VK_MENU) {
+                key = isExtended ? KEY_RALT : KEY_LALT;
+            }
+            else if (wParam == VK_SHIFT) {
+                u32 leftShift = MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC);
+                u32 scancode = ((lParam & (0xFF << 16)) >> 16);
+                key = scancode == leftShift ? KEY_LSHIFT : KEY_RSHIFT;
+            }
+            else if (wParam == VK_CONTROL) {
+                key = isExtended ? KEY_RCONTROL : KEY_LCONTROL;
+            }
+            
             InputProcessKey(key, pressed);
-        } break;
+            return 0;
+        }
         case WM_MOUSEMOVE: {
             i32 xPosition = GET_X_LPARAM(lParam);
             i32 yPosition = GET_Y_LPARAM(lParam);

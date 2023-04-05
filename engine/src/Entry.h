@@ -2,7 +2,6 @@
 
 #include "core/Application.h"
 #include "core/Logger.h"
-#include "core/Memory.h"
 #include "GameTypes.h"
 
 extern b8 CreateGame(Game* outGame);
@@ -12,8 +11,6 @@ extern b8 CreateGame(Game* outGame);
 */
 int main(void) {
 
-InitializeMemory();
-
     Game gameInst;
     if (!CreateGame(&gameInst)) {
         KFATAL("Could not create game!");
@@ -22,7 +19,7 @@ InitializeMemory();
 
     if (!gameInst.render || !gameInst.update || !gameInst.initialize || !gameInst.onResize) {
         KFATAL("The game's function pointers are null!");
-        return -1;
+        return -2;
     }
 
     if(!CreateApplication(&gameInst)){
@@ -34,7 +31,5 @@ InitializeMemory();
         return 2;
     }
 
-    ShutdownMemory();
-    
     return 0;
 }

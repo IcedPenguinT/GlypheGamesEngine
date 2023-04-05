@@ -128,8 +128,8 @@ typedef enum Keys {
     DEFINE_KEY(RSHIFT, 0xA1),
     DEFINE_KEY(LCONTROL, 0xA2),
     DEFINE_KEY(RCONTROL, 0xA3),
-    DEFINE_KEY(LMENU, 0xA4),
-    DEFINE_KEY(RMENU, 0xA5),
+    DEFINE_KEY(LALT, 0xA4),
+    DEFINE_KEY(RALT, 0xA5),
 
     DEFINE_KEY(SEMICOLON, 0xBA),
     DEFINE_KEY(PLUS, 0xBB),
@@ -142,8 +142,8 @@ typedef enum Keys {
     KEYS_MAX_KEYS
 } Keys;
 
-void InputInitialize();
-void InputShutdown();
+void InputSystemInitialize(u64* memoryRequirements, void* state);
+void InputSystemShutdown(void* state);
 void InputUpdate(f64 deltaTime);
 
 KAPI b8 InputIsKeyDown(Keys key);

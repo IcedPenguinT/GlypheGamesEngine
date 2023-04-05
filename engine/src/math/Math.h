@@ -125,12 +125,12 @@ KINLINE Vector2 Vector2Normalized(Vector2 vector) {
 
 KINLINE b8 Vector2Compare(Vector2 vector0, Vector2 vector1, f32 tolerance) {
     if (Abs(vector0.x - vector1.x) > tolerance)
-        return FALSE;
+        return false;
     
     if (Abs(vector0.x - vector1.y) > tolerance)
-        return FALSE;
+        return false;
     
-    return TRUE;
+    return true;
 }
 
 KINLINE f32 Vector2Distance(Vector2 vector0, Vector2 vector1) {
@@ -268,15 +268,15 @@ KINLINE Vector3 Vector3Cross(Vector3 vector0, Vector3 vector1) {
 
 KINLINE const b8 Vector3Compare(Vector3 vector0, Vector3 vector1, f32 tolerance) {
     if (Abs(vector0.x - vector1.x) > tolerance)
-        return FALSE;
+        return false;
     
     if (Abs(vector0.y - vector1.y) > tolerance)
-        return FALSE;
+        return false;
     
     if (Abs(vector0.z - vector1.z) > tolerance)
-        return FALSE;
+        return false;
 
-    return TRUE;
+    return true;
 }
 
 KINLINE f32 Vector3Distance(Vector3 vector0, Vector3 vector1) {

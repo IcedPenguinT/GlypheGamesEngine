@@ -2,11 +2,8 @@
 
 #include "RendererTypes.inl"
 
-struct StaticMeshData;
-struct PlatformState;
-
-b8 RendererInitialize(const char* applicationName, struct PlatformState* platState);
-void RendererShutdown();
+b8 RendererSystemInitialize(u64* memoryRequirement, void* state, const char* applicationName);
+void RendererSystemShutdown(void* state);
 
 void RendererOnResized(u16 width, u16 height);
 

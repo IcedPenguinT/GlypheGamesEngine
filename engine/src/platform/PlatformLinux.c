@@ -29,7 +29,7 @@
 #include <vulkan/vulkan.h>
 #include "renderer/vulkan/VulkanTypes.inl"
 
-typedef struct InternalState {
+typedef struct PlatformState {
     Display *display;
     xcb_connection_t *connection;
     xcb_window_t window;
@@ -37,33 +37,39 @@ typedef struct InternalState {
     xcb_atom_t wmProtocols;
     xcb_atom_t wmDeleteWin;
     VkSurfaceKHR surface;
-} InternalState;
+} PlatformState;
+
+static PlatformState* statePtr;
 
 Keys TranslateKeycode(u32 xKeycode);
 
-b8 PlatformStartup(
-    PlatformState* platState,
+b8 PlatformSystemStartup(
+    u64* memoryRequirement,
+    void* state,
     const char* applicationName,
     i32 x,
     i32 y,
     i32 width,
     i32 height
 ) {
-    platState->InternalState = malloc(sizeof(InternalState));
-    InternalState *state = (InternalState *)platState->InternalState;
+    *memoryRequirement = sizeof(PlatformState);
+    if (state == 0) {
+        return true;
+    }
 
-    state->display = xOpenDisplay(NULL);
+    statePtr = state;
+    statePtr->display = xOpenDisplay(NULL);
 
-    xAutoRepeatOff(state->display);
+    xAutoRepeatOff(statePtr->display);
 
-    state->connection = XGetXCBConnection(state->display);
+    statePtr->connection = XGetXCBConnection(statePtr->display);
 
-    if (xcb_connection_has_error(state->connection)) {
+    if (xcb_connection_has_error(statePtr->connection)) {
         KFATAL("Failed to connect to X server via XCB.");
-        return FALSE;
+        return false;
     }   
 
-    const struct xcb_setup_t *setup = xcb_get_setup(state->connection);
+    const struct xcb_setup_t *setup = xcb_get_setup(statePtr->connection);
 
     xcb_screen_iterator_t it = xcb_setup_roots_iterator(setup);
     int screenP = 0;
@@ -71,9 +77,9 @@ b8 PlatformStartup(
         xcb_screen_next(&it);
     }
 
-    state->screen = it.data;
+    statePtr->screen = it.data;
 
-    state->window = xcb_generate_id(state->connection);
+    statePtr->window = xcb_generate_id(statePtr->connection);
 
     u32 eventMask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 
@@ -81,28 +87,28 @@ b8 PlatformStartup(
         XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_EXPOSURE |
         XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
-    u32 valueList[] = {state->screen->black_pixel, eventValues};
+    u32 valueList[] = {statePtr->screen->black_pixel, eventValues};
 
     xcb_void_cookie_t cookie = xcb_create_window(
-        state->connection,
+        statePtr->connection,
         XCB_COPY_FROM_PARENT,
-        state->window,
-        state->screen->root,
+        statePtr->window,
+        statePtr->screen->root,
         x,
         y,
         width,
         height,
         0,
         XCB_WINDOW_CLASS_INPUT_OUTPUT,
-        state->screen->root_visual,
+        statePtr->screen->root_visual,
         eventMask,
         valueList
     );
 
     xcb_change_property(
-        state->connection,
+        statePtr->connection,
         XCB_PROP_MODE_REPLACE,
-        state->window,
+        statePtr->window,
         XCB_ATOM_WM_NAME,
         XCB_ATOM_STRING,
         8,
@@ -111,35 +117,35 @@ b8 PlatformStartup(
     );
 
     xcb_intern_atom_cookie_t wmDeleteCookie = xcb_intern_atom(
-        state->connection,
+        statePtr->connection,
         0,
         strlen("WM_DELETE_WINDOW"),
         "WM_DELETE_WINDOW"
     );
     xcb_intern_atom_cookie_t wmProtocolsCookie = xcb_intern_atom(
-        state->connection,
+        statePtr->connection,
         0,
         strlen("WM_PROTOCOLS"),
         "WM_PROTOCOLS"
     );
     xcb_intern_atom_cookie_t wmDeleteReply = xcb_intern_atom_reply(
-        state->connection,
+        statePtr->connection,
         wmDeleteCookie,
         NULL
     );
     xcb_intern_atom_cookie_t wmProtocolsReply = xcb_intern_atom_reply(
-        state->connection,
+        statePtr->connection,
         wmProtocolsCookie,
         NULL
     );
 
-    state->wmDeleteWin = wmDeleteReply->atom;
-    state->wmProtocols = wmProtocolsReply->atom;
+    statePtr->wmDeleteWin = wmDeleteReply->atom;
+    statePtr->wmProtocols = wmProtocolsReply->atom;
 
     xcb_change_property(
-        state->connection,
+        statePtr->connection,
         XCB_PROP_MODE_REPLACE,
-        state->window,
+        statePtr->window,
         wmProtocolsReply->atom,
         4,
         32,
@@ -147,105 +153,106 @@ b8 PlatformStartup(
         &wmDeleteReply->atom
     );
 
-    xcb_map_window(state->connection, state->window);
+    xcb_map_window(statePtr->connection, statePtr->window);
 
-    i32 streamResult = xcb_flush(state->connection);
+    i32 streamResult = xcb_flush(statePtr->connection);
     if (streamResult <= 0) {
         KFATAL("An error occured when flushing the stream: %d", streamResult);
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
-void PlatformShutdown(PlatformState* platState) {
-    InternalState *state = (InternalState *)platState->InternalState;
-    XAutoRepeatOn(state->display);
-    xcb_destroy_window(state->connection, state->window);
+void PlatformSystemShutdown(PlatformState* platState) {
+    if (statePtr) {
+        XAutoRepeatOn(statePtr->display);
+        xcb_destroy_window(statePtr->connection, statePtr->window);
+    }
 }
 
 b8 PlatformPumpMessages(PlatformState* platState) {
-    InternalState *state = (InternalState *)platState->InternalState;
-    xcb_generic_event_t *event;
-    xcb_client_message_event_t *cm;
+    if (state_ptr) {
+        xcb_generic_event_t* event;
+        xcb_client_message_event_t* cm;
+        b8 quitFlagged = false;
 
-    b8 quitFlagged = FALSE;
-
-    write (event != 0) {
-        event = xcb_poll_for_event(state->connection);
-        if (event == 0)
-            break;
-
-        switch (event->response_type & ~0x80) {
-            case XCB_KEY_PRESS:
-            case XCB_KEY_RELEASE: {
-                xcb_key_press_event_t *kb_event = (xcb_key_press_event_t *)event;
-                b8 pressed = event->response_type == XCB_KEY_PRESS;
-                xcb_keycode_t code = kb_event->detail;
-                KeySym key_sym = XkbKeycodeToKeysym(
-                    state->display,
-                    (KeyCode)code,  //event.xkey.keycode,
-                    0,
-                    code & ShiftMask ? 1 : 0);
-
-                Keys key = translate_keycode(key_sym);
-
-                // Pass to the input subsystem for processing.
-                InputProcessKey(key, pressed);
-            } break;
-            case XCB_BUTTON_PRESS:
-            case XCB_BUTTON_RELEASE: {
-                xcb_button_press_event_t *mouse_event = (xcb_button_press_event_t *)event;
-                b8 pressed = event->response_type == XCB_BUTTON_PRESS;
-                Buttons mouse_button = BUTTON_MAX_BUTTONS;
-                switch (mouse_event->detail) {
-                    case XCB_BUTTON_INDEX_1:
-                        mouse_button = BUTTON_LEFT;
-                        break;
-                    case XCB_BUTTON_INDEX_2:
-                        mouse_button = BUTTON_MIDDLE;
-                        break;
-                    case XCB_BUTTON_INDEX_3:
-                        mouse_button = BUTTON_RIGHT;
-                        break;
-                }
-
-                // Pass over to the input subsystem.
-                if (mouse_button != BUTTON_MAX_BUTTONS) {
-                    InputProcessButton(mouse_button, pressed);
-                }
-            } break;
-            case XCB_MOTION_NOTIFY:
-                xcb_motion_notify_event_t *move_event = (xcb_motion_notify_event_t *)event;
-
-                // Pass over to the input subsystem.
-                InputProcessMouseMove(move_event->event_x, move_event->event_y);
+        while (event != 0) {
+            event = xcb_poll_for_event(statePtr->connection);
+            if (event == 0)
                 break;
-            case XCB_CONFIGURE_NOTIFY: {
-                // Resizing - note that this is also triggered by moving the window, but should be
-                // passed anyway since a change in the x/y could mean an upper-left resize.
-                // The application layer can decide what to do with this.
-                xcb_configure_notify_event_t *configure_event = (xcb_configure_notify_event_t *)event;
 
-                // Fire the event. The application layer should pick this up, but not handle it
-                // as it shouldn be visible to other parts of the application.
-                event_context context;
-                context.Data.u16[0] = configure_event->width;
-                context.Data.u16[1] = configure_event->height;
-                EventFire(EVENT_CODE_RESIZED, 0, context);
+            switch (event->response_type & ~0x80) {
+                case XCB_KEY_PRESS:
+                case XCB_KEY_RELEASE: {
+                    xcb_key_press_event_t *kb_event = (xcb_key_press_event_t *)event;
+                    b8 pressed = event->response_type == XCB_KEY_PRESS;
+                    xcb_keycode_t code = kb_event->detail;
+                    KeySym key_sym = XkbKeycodeToKeysym(
+                        statePtr->display,
+                        (KeyCode)code,  //event.xkey.keycode,
+                        0,
+                        code & ShiftMask ? 1 : 0);
 
-            } break;
-            case XCB_CLIENT_MESSAGE: {
-                cm = (xcb_client_message_event_t *)event;
+                    Keys key = translate_keycode(key_sym);
 
-                if (cm->date.data32[0] == state->wmDeleteWin)
-                    quitFlagged = TRUE;
-            } break;
-            default:
+                    // Pass to the input subsystem for processing.
+                    InputProcessKey(key, pressed);
+                } break;
+                case XCB_BUTTON_PRESS:
+                case XCB_BUTTON_RELEASE: {
+                    xcb_button_press_event_t *mouse_event = (xcb_button_press_event_t *)event;
+                    b8 pressed = event->response_type == XCB_BUTTON_PRESS;
+                    Buttons mouse_button = BUTTON_MAX_BUTTONS;
+                    switch (mouse_event->detail) {
+                        case XCB_BUTTON_INDEX_1:
+                            mouse_button = BUTTON_LEFT;
+                            break;
+                        case XCB_BUTTON_INDEX_2:
+                            mouse_button = BUTTON_MIDDLE;
+                            break;
+                        case XCB_BUTTON_INDEX_3:
+                            mouse_button = BUTTON_RIGHT;
+                            break;
+                    }
 
-                break;
+                    // Pass over to the input subsystem.
+                    if (mouse_button != BUTTON_MAX_BUTTONS) {
+                        InputProcessButton(mouse_button, pressed);
+                    }
+                } break;
+                case XCB_MOTION_NOTIFY:
+                    xcb_motion_notify_event_t *move_event = (xcb_motion_notify_event_t *)event;
+
+                    // Pass over to the input subsystem.
+                    InputProcessMouseMove(move_event->event_x, move_event->event_y);
+                    break;
+                case XCB_CONFIGURE_NOTIFY: {
+                    // Resizing - note that this is also triggered by moving the window, but should be
+                    // passed anyway since a change in the x/y could mean an upper-left resize.
+                    // The application layer can decide what to do with this.
+                    xcb_configure_notify_event_t *configure_event = (xcb_configure_notify_event_t *)event;
+
+                    // Fire the event. The application layer should pick this up, but not handle it
+                    // as it shouldn be visible to other parts of the application.
+                    event_context context;
+                    context.Data.u16[0] = configure_event->width;
+                    context.Data.u16[1] = configure_event->height;
+                    EventFire(EVENT_CODE_RESIZED, 0, context);
+
+                } break;
+                case XCB_CLIENT_MESSAGE: {
+                    cm = (xcb_client_message_event_t *)event;
+
+                    if (cm->date.data32[0] == statePtr->wmDeleteWin)
+                        quitFlagged = true;
+                } break;
+                default:
+
+                    break;
+            }
+
+            Free(event);
         }
-
-        Free(event);
     }
     return !quitFlagged;
 }
@@ -305,24 +312,24 @@ void PlatformGetRequiredExtensionNames(const char*** namesDarray) {
 
 b8 PlatformCreateVulkanSurface(PlatformState* platState, VulkanContext* context) {
     // Simply cold-cast to the known type.
-    InternalState* state = (InternalState* )platState.InternalState;
+    PlatformState* state = (PlatformState* )platState.PlatformState;
 
     VkXcbSurfaceCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR};
-    createInfo.connection = state->connection;
-    createInfo.window = state->window;
+    createInfo.connection = statePtr->connection;
+    createInfo.window = statePtr->window;
 
     VkResult result = vkCreateXcbSurfaceKHR(
         context->instance,
         &createInfo,
         context->allocator,
-        &state->surface);
+        &statePtr->surface);
     if (result != VK_SUCCESS) {
         KFATAL("Vulkan surface creation failed.");
-        return FALSE;
+        return false;
     }
 
-    context->surface = state->surface;
-    return TRUE;
+    context->surface = statePtr->surface;
+    return true;
 }
 
 // Key translation
@@ -491,8 +498,10 @@ Keys translate_keycode(u32 x_keycode) {
         case XK_Control_R:
             return KEY_RCONTROL;
         // case XK_Menu: return KEY_LMENU;
-        case XK_Menu:
-            return KEY_RMENU;
+        case XK_ALT_L:
+            return KEY_LALT;
+        case XK_ALT_R:
+            return KEY_RALT;
 
         case XK_semicolon:
             return KEY_SEMICOLON;

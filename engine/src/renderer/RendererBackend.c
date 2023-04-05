@@ -2,8 +2,7 @@
 
 #include "vulkan/VulkanBackend.h"
 
-b8 RendererBackendCreate(RendererBackendType type, struct PlatformState* platState, RendererBackend* outRendererBackend) {
-    outRendererBackend->platState = platState;
+b8 RendererBackendCreate(RendererBackendType type, RendererBackend* outRendererBackend) {
 
     if (type == RENDERER_BACKEND_TYPE_VULKAN){
         outRendererBackend->initialize = VulkanRendererBackendInitialize;
@@ -12,10 +11,10 @@ b8 RendererBackendCreate(RendererBackendType type, struct PlatformState* platSta
         outRendererBackend->endFrame = VulkanRendererBackendEndFrame;
         outRendererBackend->resized = VulkanRendererBackendOnResized;
 
-        return TRUE;
+        return true;
     }
 
-    return FALSE;
+    return false;
 }
 
 void RendererBackendDestroy(RendererBackend* rendererBackend) {

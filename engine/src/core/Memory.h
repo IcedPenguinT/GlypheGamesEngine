@@ -5,6 +5,7 @@
 typedef enum MemoryTag {
     MEMORY_TAG_UNKOWN,
     MEMORY_TAG_ARRAY,
+    MEMORY_TAG_LINEAR_ALLOCATOR,
     MEMORY_TAG_DARRAY,
     MEMORY_TAG_DICT,
     MEMORY_TAG_RING_QUEUE,
@@ -24,9 +25,9 @@ typedef enum MemoryTag {
     MEMORY_TAG_COUNT
 } MemoryTag;
 
-KAPI void InitializeMemory();
+KAPI void MemorySystemInitialize(u64* memoryRequirement, void* state);
 
-KAPI void ShutdownMemory();
+KAPI void MemorySystemShutdown(void* state);
 
 KAPI void* Allocate(u64 size, MemoryTag tag);
 
@@ -39,3 +40,5 @@ KAPI void* CopyMemory(void* dest, const void* source, u64 size);
 KAPI void* SetMemory(void* dest, i32 value, u64 size);
 
 KAPI char* GetMemoryUsageStr();
+
+KAPI u64 GetMemoryAllocCount();

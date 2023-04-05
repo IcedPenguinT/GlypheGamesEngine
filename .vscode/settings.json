@@ -51,10 +51,14 @@
         "windowsx.h": "c",
         "vulkan_platform.h": "c",
         "renderer_frontend.h": "c",
-        "algorithm": "c",
-        "memory": "c",
-        "limits": "c",
-        "utility": "c",
+        "iosfwd": "c",
+        "tuple": "cpp",
+        "utility": "cpp",
+        "Memory.h": "c",
+        "Defines.h": "c",
+        "VulkanTypes.inl": "c",
+        "clock.h": "c",
+        "String.h": "c",
         "logger.h": "c"
-    },
+    }
 }

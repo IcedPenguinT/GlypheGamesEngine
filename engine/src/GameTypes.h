@@ -9,4 +9,5 @@ typedef struct Game {
     b8(*render)(struct Game* gameInst, f32 deltaTime);
     void (*onResize)(struct Game* gameInst, u32 width, u32 height);
     void* state;
+    void* applicationState;
 } Game;

@@ -23,8 +23,8 @@ typedef enum LogLevel {
     LOG_LEVEL_TRACE = 5
 } LogLevel;
 
-b8 InitializeLogging();
-void ShutdownLogging();
+b8 InitializeLogging(u64* memoryRequirement, void* state);
+void ShutdownLogging(void* state);
 
 KAPI void LogOutput(LogLevel level, const char* message, ...);
 

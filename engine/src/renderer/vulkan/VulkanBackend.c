@@ -30,7 +30,7 @@ void CreateCommandBuffers(RendererBackend* backend);
 void RegenerateFramebuffers(RendererBackend* backend, VulkanSwapchain* swapchain, VulkanRenderpass* renderpass);
 b8 RecreateSwapchain(RendererBackend* backend);
 
-b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applicationName, struct PlatformState* platState) {
+b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applicationName) {
     context.FindMemoryIndex = FindMemoryIndex;
     
     // TODO: custom allocator.
@@ -85,10 +85,10 @@ b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applica
 
     for (u32 i = 0; i < requiredValidationLayerCount; ++i) {
         KINFO("Searching for layer : %s...", requiredValidationLayerNames[i]);
-        b8 found = FALSE;
+        b8 found = false;
         for (u32 j = 0; j < availableLayerCount; ++j) {
             if (StringEqual(requiredValidationLayerNames[i], availableLayers[j].layerName)) {
-                found = TRUE;
+                found = true;
                 KINFO("Found.");
                 break;
             }
@@ -96,7 +96,7 @@ b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applica
 
         if (!found){
             KFATAL("Required validation layer is missing: %s", requiredValidationLayerNames[i]);
-            return FALSE;
+            return false;
         }
     }
     KINFO("All required validation layers are present.");
@@ -126,15 +126,15 @@ b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applica
 #endif
 
     KDEBUG("Creating Vulkan Surface...");
-    if (!PlatformCreateVulkanSurface(platState, &context)) {
+    if (!PlatformCreateVulkanSurface(&context)) {
         KERROR("Failed to create platform surface!");
-        return FALSE;
+        return false;
     }
     KDEBUG("Vulkan surface created.");
 
     if (!VulkanDeviceCreate(&context)){
         KERROR("Failed to create Device!");
-        return FALSE;
+        return false;
     }
 
     VulkanSwapchainCreate(
@@ -169,7 +169,7 @@ b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applica
         // Create the fence in a signaled state, indicating that the first frame has already been "rendered".
         // This will prevent the application from waiting indefinitely for the first frame to render since it
         // cannot be rendered until a frame is "rendered" before it.
-        VulkanFenceCreate(&context, TRUE, &context.inFlightFences[i]);
+        VulkanFenceCreate(&context, true, &context.inFlightFences[i]);
     }
 
     // In flight fences should not yet exist at this point, so clear the list. These are stored in pointers
@@ -181,7 +181,7 @@ b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applica
     }
 
     KINFO("Vulkan renderer initialized successfully.");
-    return TRUE;
+    return true;
 }
 
 void VulkanRendererBackendShutdown(RendererBackend* backend) {
@@ -277,29 +277,29 @@ b8 VulkanRendererBackendBeginFrame(RendererBackend* backend, f32 deltaTime) {
     if (context.recreatingSwapchain) {
         VkResult result = vkDeviceWaitIdle(device->logicalDevice);
         if (!VulkanResultIsSuccess(result)) {
-            KERROR("vulkan_RendererBackend_begin_frame vkDeviceWaitIdle (1) failed: '%s'", VulkanResultString(result, TRUE));
-            return FALSE;
+            KERROR("vulkan_RendererBackend_begin_frame vkDeviceWaitIdle (1) failed: '%s'", VulkanResultString(result, true));
+            return false;
         }
         KINFO("Recreating swapchain, booting.");
-        return FALSE;
+        return false;
     }
 
     // Check if the framebuffer has been resized. If so, a new swapchain must be created.
     if (context.framebufferSizeGeneration != context.framebufferSizeLastGeneration) {
         VkResult result = vkDeviceWaitIdle(device->logicalDevice);
         if (!VulkanResultIsSuccess(result)) {
-            KERROR("vulkan_RendererBackend_begin_frame vkDeviceWaitIdle (2) failed: '%s'", VulkanResultString(result, TRUE));
-            return FALSE;
+            KERROR("vulkan_RendererBackend_begin_frame vkDeviceWaitIdle (2) failed: '%s'", VulkanResultString(result, true));
+            return false;
         }
 
         // If the swapchain recreation failed (because, for example, the window was minimized),
         // boot out before unsetting the flag.
         if (!RecreateSwapchain(backend)) {
-            return FALSE;
+            return false;
         }
 
         KINFO("Resized, booting.");
-        return FALSE;
+        return false;
     }
 
     // Wait for the execution of the current frame to complete. The fence being free will allow this one to move on.
@@ -308,7 +308,7 @@ b8 VulkanRendererBackendBeginFrame(RendererBackend* backend, f32 deltaTime) {
             &context.inFlightFences[context.currentFrame],
             UINT64_MAX)) {
         KWARNING("In-flight fence wait failure!");
-        return FALSE;
+        return false;
     }
 
     // Acquire the next image from the swap chain. Pass along the semaphore that should signaled when this completes.
@@ -320,13 +320,13 @@ b8 VulkanRendererBackendBeginFrame(RendererBackend* backend, f32 deltaTime) {
             context.imageAvailableSemaphores[context.currentFrame],
             0,
             &context.imageIndex)) {
-        return FALSE;
+        return false;
     }
 
     // Begin recording commands.
     VulkanCommandBuffer* commandBuffer = &context.graphicsCommandBuffers[context.imageIndex];
     VulkanCommandBufferReset(commandBuffer);
-    VulkanCommandBufferBegin(commandBuffer, FALSE, FALSE, FALSE);
+    VulkanCommandBufferBegin(commandBuffer, false, false, false);
 
     // Dynamic state
     VkViewport viewport;
@@ -355,7 +355,7 @@ b8 VulkanRendererBackendBeginFrame(RendererBackend* backend, f32 deltaTime) {
         &context.mainRenderpass,
         context.swapchain.framebuffers[context.imageIndex].handle);
 
-    return TRUE;
+    return true;
 }
 
 b8 VulkanRendererBackendEndFrame(RendererBackend* backend, f32 deltaTime) {
@@ -408,8 +408,8 @@ b8 VulkanRendererBackendEndFrame(RendererBackend* backend, f32 deltaTime) {
         &submitInfo,
         context.inFlightFences[context.currentFrame].handle);
     if (result != VK_SUCCESS) {
-        KERROR("vkQueueSubmit failed with result: %s", VulkanResultString(result, TRUE));
-        return FALSE;
+        KERROR("vkQueueSubmit failed with result: %s", VulkanResultString(result, true));
+        return false;
     }
 
     VulkanCommandBufferUpdateSubmitted(commandBuffer);
@@ -426,7 +426,7 @@ b8 VulkanRendererBackendEndFrame(RendererBackend* backend, f32 deltaTime) {
 
 
     
-    return TRUE;
+    return true;
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback (VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -484,7 +484,7 @@ void CreateCommandBuffers(RendererBackend* backend) {
         VulkanCommandBufferAllocate(
             &context,
             context.device.graphicsCommandPool,
-            TRUE,
+            true,
             &context.graphicsCommandBuffers[i]);
     }
 
@@ -514,17 +514,17 @@ b8 RecreateSwapchain(RendererBackend* backend) {
     // If already being recreated, do not try again.
     if (context.recreatingSwapchain) {
         KDEBUG("RecreateSwapchain called when already recreating. Booting.");
-        return FALSE;
+        return false;
     }
 
     // Detect if the window is too small to be drawn to
     if (context.framebufferWidth == 0 || context.framebufferHeight == 0) {
         KDEBUG("RecreateSwapchain called when window is < 1 in a dimension. Booting.");
-        return FALSE;
+        return false;
     }
 
     // Mark as recreating if the dimensions are valid.
-    context.recreatingSwapchain = TRUE;
+    context.recreatingSwapchain = true;
 
     // Wait for any operations to complete.
     vkDeviceWaitIdle(context.device.logicalDevice);
@@ -578,7 +578,7 @@ b8 RecreateSwapchain(RendererBackend* backend) {
     CreateCommandBuffers(backend);
 
     // Clear the recreating flag.
-    context.recreatingSwapchain = FALSE;
+    context.recreatingSwapchain = false;
 
-    return TRUE;
+    return true;
 }

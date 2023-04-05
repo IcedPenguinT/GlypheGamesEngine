@@ -51,13 +51,13 @@ b8 VulkanSwapchainAcquireNextImageIndex(
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         // Trigger swapchain recreation, then boot out of the render loop.
         VulkanSwapchainRecreate(context, context->framebufferWidth, context->framebufferHeight, swapchain);
-        return FALSE;
+        return false;
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         KFATAL("Failed to acquire swapchain image!");
-        return FALSE;
+        return false;
     }
 
-    return TRUE;
+    return true;
 }
 
 void VulkanSwapchainPresent(
@@ -92,14 +92,14 @@ void Create(VulkanContext* context, u32 width, u32 height, VulkanSwapchain* swap
     swapchain->maxFramesInFlight = 2;
 
     // Choose a swap surface format.
-    b8 found = FALSE;
+    b8 found = false;
     for (u32 i = 0; i < context->device.swapchainSupport.formatCount; ++i) {
         VkSurfaceFormatKHR format = context->device.swapchainSupport.formats[i];
         // Preferred formats
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM &&
             format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             swapchain->imageFormat = format;
-            found = TRUE;
+            found = true;
             break;
         }
     }
@@ -217,7 +217,7 @@ void Create(VulkanContext* context, u32 width, u32 height, VulkanSwapchain* swap
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        TRUE,
+        true,
         VK_IMAGE_ASPECT_DEPTH_BIT,
         &swapchain->depthAttachment);
 

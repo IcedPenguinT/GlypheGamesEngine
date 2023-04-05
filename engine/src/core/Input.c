@@ -20,54 +20,78 @@ typedef struct InputState {
     MouseState mousePrevious;
 } InputState;
 
-static b8 initialize = FALSE;
-static InputState state = {};
+static InputState* statePtr;
 
-void InputInitialize() {
-    ZeroMemory(&state, sizeof(InputState));
-    initialize = TRUE;
+void InputSystemInitialize(u64* memoryRequirements, void* state) {
+    *memoryRequirements = sizeof(InputState);
+    if (state == 0) {
+        return;
+    }
+    ZeroMemory(state, sizeof(InputState));
+    statePtr = state;
     KINFO("Input subsystem initialized.");
 }
 
-void InputShutdown() {
-    initialize = FALSE;
+void InputSystemShutdown() {
+    statePtr = 0;
 }
 
 void InputUpdate(f64 deltaTime) {
-    if (!initialize)
+    if (!statePtr)
         return;
     
-    CopyMemory(&state.keyboardPrevious, &state.keyboardCurrent, sizeof(KeyboardState));
-    CopyMemory(&state.mousePrevious, &state.mouseCurrent, sizeof(MouseState));
+    CopyMemory(&statePtr->keyboardPrevious, &statePtr->keyboardCurrent, sizeof(KeyboardState));
+    CopyMemory(&statePtr->mousePrevious, &statePtr->mouseCurrent, sizeof(MouseState));
 }
 
 b8 InputIsKeyDown(Keys key) {
-    if (!initialize)
-        return FALSE;
-    return state.keyboardCurrent.keys[key] == TRUE;
+    if (!statePtr)
+        return false;
+    return statePtr->keyboardCurrent.keys[key] == true;
 }
 
 b8 InputIsKeyUp(Keys key) {
-    if (!initialize)
-        return FALSE;
-    return state.keyboardCurrent.keys[key] == FALSE;
+    if (!statePtr)
+        return false;
+    return statePtr->keyboardCurrent.keys[key] == false;
 }
 
 b8 InputWasKeyDown(Keys key) {
-    if (!initialize)
-        return FALSE;
-    return state.keyboardPrevious.keys[key] == TRUE;
+    if (!statePtr)
+        return false;
+    return statePtr->keyboardPrevious.keys[key] == true;
 }
 
 b8 InputWasKeyUp(Keys key) {
-    if (!initialize)
-        return FALSE;
-    return state.keyboardPrevious.keys[key] == FALSE;
+    if (!statePtr)
+        return false;
+    return statePtr->keyboardPrevious.keys[key] == false;
 }
 
 void InputProcessKey(Keys key, b8 pressed) {
-    if (state.keyboardCurrent.keys[key] != pressed) {
-        state.keyboardCurrent.keys[key] = pressed;
+    if (statePtr && statePtr->keyboardCurrent.keys[key] != pressed)
+        statePtr->keyboardCurrent.keys[key] = pressed;
+
+    if (key == KEY_LALT) {
+        KINFO("Left alt %s.", pressed ? "pressed" : "released");
+    }
+    else if (key == KEY_RALT)
+        KINFO("Right alt %s.", pressed ? "pressed" : "released");
+
+    if (key == KEY_LCONTROL) {
+        KINFO("Left ctrl %s.", pressed ? "pressed" : "released");
+    }
+    else if (key == KEY_RCONTROL)
+        KINFO("Right ctrl %s.", pressed ? "pressed" : "released");
+
+    if (key == KEY_LSHIFT) {
+        KINFO("Left shift %s.", pressed ? "pressed" : "released");
+    }
+    else if (key == KEY_RSHIFT)
+        KINFO("Right shift %s.", pressed ? "pressed" : "released");
+    
+    if (statePtr->keyboardCurrent.keys[key] != pressed) {
+        statePtr->keyboardCurrent.keys[key] = pressed;
         
         EventContext context;
         context.Data.u16[0] = key;
@@ -76,54 +100,54 @@ void InputProcessKey(Keys key, b8 pressed) {
 }
 
 b8 InputIsButtonDown(Buttons button) {
-    if (!initialize)
-        return FALSE;
-    return state.mouseCurrent.buttons[button] == TRUE;
+    if (!statePtr)
+        return false;
+    return statePtr->mouseCurrent.buttons[button] == true;
 }
 
 b8 InputIsButtonUp(Buttons button) {
-    if (!initialize)
-        return FALSE;
-    return state.mouseCurrent.buttons[button] == FALSE;
+    if (!statePtr)
+        return false;
+    return statePtr->mouseCurrent.buttons[button] == false;
 }
 
 b8 InputWasButtonDown(Buttons button) {
-    if (!initialize)
-        return FALSE;
-    return state.mousePrevious.buttons[button] == TRUE;
+    if (!statePtr)
+        return false;
+    return statePtr->mousePrevious.buttons[button] == true;
 }
 
 b8 InputWasButtonUp(Buttons button) {
-    if (!initialize)
-        return FALSE;
-    return state.mousePrevious.buttons[button] == FALSE;
+    if (!statePtr)
+        return false;
+    return statePtr->mousePrevious.buttons[button] == false;
 }
 
 void InputGetMousePosition(i32* x, i32* y) {
-    if (!initialize) {
+    if (!statePtr) {
         *x = 0;
         *y = 0;
         return;
     }
 
-    *x = state.mouseCurrent.x;
-    *y = state.mouseCurrent.y;
+    *x = statePtr->mouseCurrent.x;
+    *y = statePtr->mouseCurrent.y;
 }
 
 void InputGetPreviousMousePosition(i32* x, i32* y) {
-    if (!initialize) {
+    if (!statePtr) {
         *x = 0;
         *y = 0;
         return;
     }
 
-    *x = state.mousePrevious.x;
-    *y = state.mousePrevious.y;
+    *x = statePtr->mousePrevious.x;
+    *y = statePtr->mousePrevious.y;
 }
 
 void InputProcessButton(Buttons button, b8 pressed) {
-    if (state.mouseCurrent.buttons[button] != pressed) {
-        state.mouseCurrent.buttons[button] = pressed;
+    if (statePtr->mouseCurrent.buttons[button] != pressed) {
+        statePtr->mouseCurrent.buttons[button] = pressed;
 
         EventContext context;
         context.Data.u16[0] = button;
@@ -132,12 +156,12 @@ void InputProcessButton(Buttons button, b8 pressed) {
 }
 
 void InputProcessMouseMove(i16 x, i16 y) {
-    if (state.mouseCurrent.x != x || state.mouseCurrent.y != y) {
+    if (statePtr->mouseCurrent.x != x || statePtr->mouseCurrent.y != y) {
         // NOTE: Enable this line if debugging.
         //KDEBUG("Mouse pos: %i, %i!", x, y);
 
-        state.mouseCurrent.x = x;
-        state.mouseCurrent.y = y;
+        statePtr->mouseCurrent.x = x;
+        statePtr->mouseCurrent.y = y;
 
         EventContext context;
         context.Data.u16[0] = x;

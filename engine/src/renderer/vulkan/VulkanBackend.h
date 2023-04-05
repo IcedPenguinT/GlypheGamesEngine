@@ -2,7 +2,7 @@
 
 #include "renderer/RendererBackend.h"
 
-b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applicationName, struct PlatformState* platState);
+b8 VulkanRendererBackendInitialize(RendererBackend* backend, const char* applicationName);
 void VulkanRendererBackendShutdown(RendererBackend* backend);
 
 void VulkanRendererBackendOnResized(RendererBackend* backend, u16 width, u16 height);

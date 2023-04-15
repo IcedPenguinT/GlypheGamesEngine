@@ -10,6 +10,16 @@
         KASSERT(expr == VK_SUCCESS);   \
     }                                  
 
+typedef struct VulkanBuffer {
+    u64 totalSize;
+    VkBuffer handle;
+    VkBufferUsageFlagBits usage;
+    b8 isLocked;
+    VkDeviceMemory memory;
+    i32 memoryIndex;
+    u32 memoryPropertyFlags;
+} VulkanBuffer;
+
 typedef struct VulkanSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilities;
     u32 formatCount;
@@ -108,6 +118,27 @@ typedef struct VulkanFence {
     b8 isSignaled;
 } VulkanFence;
 
+typedef struct VulkanShaderStage {
+    VkShaderModuleCreateInfo createInfo;
+    VkShaderModule handle;
+    VkPipelineShaderStageCreateInfo shaderStageCreateInfo;
+} VulkanShaderStage;
+
+typedef struct VulkanPipeline {
+    VkPipeline handle;
+    VkPipelineLayout pipelineLayout;
+} VulkanPipeline;
+
+#define OBJECT_SHADER_STAGE_COUNT 2
+typedef struct VulkanObjectShader {
+    // vertex, fragment
+    VulkanShaderStage stages[OBJECT_SHADER_STAGE_COUNT];
+
+    VulkanPipeline pipeline;
+
+
+} VulkanObjectShader;
+
 typedef struct VulkanContext {
     u32 framebufferWidth;
     u32 framebufferHeight;
@@ -134,7 +165,13 @@ typedef struct VulkanContext {
     u32 currentFrame;
 
     b8 recreatingSwapchain;
+
+    VulkanObjectShader objectShader;
+
     VulkanRenderpass mainRenderpass;
+
+    VulkanBuffer objectVertexBuffer;
+    VulkanBuffer objectIndexBuffer;
 
     VulkanCommandBuffer* graphicsCommandBuffers;
 
@@ -150,5 +187,8 @@ typedef struct VulkanContext {
     // Holds pointers to fences which exist and are owned elsewhere.
     VulkanFence** imagesInFlight;
 
-    i32 (*FindMemoryIndex)(u32 typeFilter, u32 propertyFlags);
+    u64 geometryVertexOffset;
+    u64 geometryIndexOffset;
+
+    i32 (*findMemoryIndex)(u32 typeFilter, u32 propertyFlags);
 } VulkanContext;

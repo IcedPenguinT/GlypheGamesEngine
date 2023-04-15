@@ -26,6 +26,7 @@ int main(void) {
         KINFO("Application failed to create!");
         return 1;
     }
+    
     if (!RunApplication()) {
         KINFO("Application did not shutdown gracefully.");
         return 2;

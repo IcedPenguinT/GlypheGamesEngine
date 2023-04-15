@@ -14,7 +14,7 @@ void VulkanImageCreate(
     VkImageTiling tiling,
     VkImageUsageFlags usage,
     VkMemoryPropertyFlags memoryFlags,
-    b32 create_view,
+    b32 createVieuw,
     VkImageAspectFlags viewAspectFlags,
     VulkanImage* outImage) {
 
@@ -43,7 +43,7 @@ void VulkanImageCreate(
     VkMemoryRequirements memoryRequirements;
     vkGetImageMemoryRequirements(context->device.logicalDevice, outImage->handle, &memoryRequirements);
 
-    i32 memoryType = context->FindMemoryIndex(memoryRequirements.memoryTypeBits, memoryFlags);
+    i32 memoryType = context->findMemoryIndex(memoryRequirements.memoryTypeBits, memoryFlags);
     if (memoryType == -1) {
         KERROR("Required memory type not found. Image not valid.");
     }
@@ -58,7 +58,7 @@ void VulkanImageCreate(
     VK_CHECK(vkBindImageMemory(context->device.logicalDevice, outImage->handle, outImage->memory, 0));  // TODO: configurable memory offset.
 
     // Create view
-    if (create_view) {
+    if (createVieuw) {
         outImage->view = 0;
         VulkanImageViewCreate(context, format, outImage, viewAspectFlags);
     }

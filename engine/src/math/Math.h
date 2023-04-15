@@ -670,7 +670,7 @@ KINLINE Vector3 Matrix4Down(Matrix4 matrix) {
     return down;
 }
 
-KINLINE Vector3 Matrix4Left(Matrix4 matrix) {
+KINLINE Vector3 Matrix4Right(Matrix4 matrix) {
     Vector3 right;
     right.x = -matrix.data[0];
     right.y = -matrix.data[4];
@@ -679,7 +679,7 @@ KINLINE Vector3 Matrix4Left(Matrix4 matrix) {
     return right;
 }
 
-KINLINE Vector3 Matrix4Right(Matrix4 matrix) {
+KINLINE Vector3 Matrix4Left(Matrix4 matrix) {
     Vector3 left;
     left.x = matrix.data[0];
     left.y = matrix.data[4];

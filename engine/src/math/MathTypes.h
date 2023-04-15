@@ -54,3 +54,7 @@ typedef Vector4 Quaternion;
 typedef union Matrix4Union {
     f32 data[16];
 } Matrix4;
+
+typedef struct Vertex3D {
+    Vector3 position;
+} Vertex3D;

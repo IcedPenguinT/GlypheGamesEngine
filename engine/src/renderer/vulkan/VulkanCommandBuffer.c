@@ -73,7 +73,7 @@ void VulkanCommandBufferReset(VulkanCommandBuffer* commandBuffer) {
     commandBuffer->state = COMMAND_BUFFER_STATE_READY;
 }
 
-void VulkanCommandBufferAlocateAndBeginSingleUse(
+void VulkanCommandBufferAllocateAndBeginSingleUse(
     VulkanContext* context,
     VkCommandPool pool,
     VulkanCommandBuffer* outCommandBuffer) {

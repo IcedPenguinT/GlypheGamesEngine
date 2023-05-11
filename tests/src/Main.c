@@ -1,21 +1,21 @@
-#include "TestManager.h"
+#include "test_manager.h"
 
-#include "memory/LinearAllocatorTests.h"
+#include "memory/linear_allocator_tests.h"
 
-#include <core/Logger.h>
+#include <core/logger.h>
 
 int main() {
     // Always initalize the test manager first.
-    TestManagerInit();
+    test_manager_init();
 
     // TODO: add test registrations here.
-    LinearAllocatorRegisterTests();
+    linear_allocator_register_tests();
 
 
     KDEBUG("Starting tests...");
 
     // Execute tests
-    TestManagerRunTests();
+    test_manager_run_tests();
 
     return 0;
 }

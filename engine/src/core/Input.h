@@ -1,17 +1,17 @@
 #pragma once
 
-#include "Defines.h"
+#include "defines.h"
 
-typedef enum Buttons {
+typedef enum buttons {
     BUTTON_LEFT,
     BUTTON_RIGHT,
     BUTTON_MIDDLE,
     BUTTON_MAX_BUTTONS
-} Buttons;
+} buttons;
 
 #define DEFINE_KEY(name, code) KEY_##name = code
 
-typedef enum Keys {
+typedef enum keys {
     DEFINE_KEY(BACKSPACE, 0x08),
     DEFINE_KEY(ENTER, 0x0D),
     DEFINE_KEY(TAB, 0x09),
@@ -140,26 +140,35 @@ typedef enum Keys {
     DEFINE_KEY(GRAVE, 0xC0),
 
     KEYS_MAX_KEYS
-} Keys;
+} keys;
 
-void InputSystemInitialize(u64* memoryRequirements, void* state);
-void InputSystemShutdown(void* state);
-void InputUpdate(f64 deltaTime);
+/**
+ * @brief Initializes the input system. Call twice; once to obtain memory requirement (passing
+ * state = 0), then a second time passing allocated memory to state.
+ * 
+ * @param memory_requirement The required size of the state memory.
+ * @param state Either 0 or the allocated block of state memory.
+ */
+void input_system_initialize(u64* memory_requirement, void* state);
+void input_system_shutdown(void* state);
+void input_update(f64 delta_time);
 
-KAPI b8 InputIsKeyDown(Keys key);
-KAPI b8 InputIsKeyUp(Keys key);
-KAPI b8 InputWasKeyDown(Keys key);
-KAPI b8 InputWasKeyUp(Keys key);
+// keyboard input
+KAPI b8 input_is_key_down(keys key);
+KAPI b8 input_is_key_up(keys key);
+KAPI b8 input_was_key_down(keys key);
+KAPI b8 input_was_key_up(keys key);
 
-void InputProcessKey(Keys key, b8 pressed);
+void input_process_key(keys key, b8 pressed);
 
-KAPI b8 InputIsButtonDown(Buttons button);
-KAPI b8 InputIsButtonUp(Buttons button);
-KAPI b8 InputWasButtonDown(Buttons button);
-KAPI b8 InputWasButtonUp(Buttons button);
-KAPI void InputGetMousePosition(i32* x, i32* y);
-KAPI void InputGetPreviousMousePosition(i32* x, i32* y);
+// mouse input
+KAPI b8 input_is_button_down(buttons button);
+KAPI b8 input_is_button_up(buttons button);
+KAPI b8 input_was_button_down(buttons button);
+KAPI b8 input_was_button_up(buttons button);
+KAPI void input_get_mouse_position(i32* x, i32* y);
+KAPI void input_get_previous_mouse_position(i32* x, i32* y);
 
-void InputProcessButton(Buttons button, b8 pressed);
-void InputProcessMouseMove(i16 x, i16 y);
-void InputProcessMouseWheel(i8 zDelta);
+void input_process_button(buttons button, b8 pressed);
+void input_process_mouse_move(i16 x, i16 y);
+void input_process_mouse_wheel(i8 z_delta);

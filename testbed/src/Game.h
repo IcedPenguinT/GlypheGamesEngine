@@ -1,16 +1,16 @@
 #pragma once
 
-#include <Defines.h>
-#include <GameTypes.h>
+#include <defines.h>
+#include <game_types.h>
 
-typedef struct GameState {
-    f32 deltaTime;
-} GameState;
+typedef struct game_state {
+    f32 delta_time;
+} game_state;
 
-b8 GameInitialize(Game* gameInst);
+b8 game_initialize(game* game_inst);
 
-b8 GameUpdate(Game* gameInst, f32 deltaTime);
+b8 game_update(game* game_inst, f32 delta_time);
 
-b8 GameRender(Game* gameInst, f32 deltaTime);
+b8 game_render(game* game_inst, f32 delta_time);
 
-void GameOnResize(Game* gameInst, u32 width, u32 height);
+void game_on_resize(game* game_inst, u32 width, u32 height);

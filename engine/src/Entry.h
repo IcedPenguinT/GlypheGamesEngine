@@ -1,33 +1,37 @@
 #pragma once
 
-#include "core/Application.h"
-#include "core/Logger.h"
-#include "GameTypes.h"
+#include "core/application.h"
+#include "core/logger.h"
+#include "game_types.h"
 
-extern b8 CreateGame(Game* outGame);
+// Externally-defined function to create a game.
+extern b8 create_game(game* out_game);
 
 /**
- * The Main entry point of the application.
-*/
+ * The main entry point of the application.
+ */
 int main(void) {
-
-    Game gameInst;
-    if (!CreateGame(&gameInst)) {
+    // Request the game instance from the application.
+    game game_inst;
+    if (!create_game(&game_inst)) {
         KFATAL("Could not create game!");
         return -1;
     }
 
-    if (!gameInst.render || !gameInst.update || !gameInst.initialize || !gameInst.onResize) {
-        KFATAL("The game's function pointers are null!");
+    // Ensure the function pointers exist.
+    if (!game_inst.render || !game_inst.update || !game_inst.initialize || !game_inst.on_resize) {
+        KFATAL("The game's function pointers must be assigned!");
         return -2;
     }
 
-    if(!CreateApplication(&gameInst)){
-        KINFO("Application failed to create!");
+    // Initialization.
+    if (!application_create(&game_inst)) {
+        KFATAL("Application failed to create!.");
         return 1;
     }
-    
-    if (!RunApplication()) {
+
+    // Begin the game loop.
+    if (!application_run()) {
         KINFO("Application did not shutdown gracefully.");
         return 2;
     }

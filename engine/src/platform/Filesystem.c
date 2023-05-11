@@ -1,69 +1,69 @@
-#include "Filesystem.h"
+#include "filesystem.h"
 
-#include "core/Logger.h"
-#include "core/Memory.h"
+#include "core/logger.h"
+#include "core/kmemory.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 
-b8 FilesystemExists(const char* path) {
-    struct stat sBuffer;
-    return stat(path, &sBuffer) == 0;
+b8 filesystem_exists(const char* path) {
+    struct stat buffer;
+    return stat(path, &buffer) == 0;
 }
 
-b8 FilesystemOpen(const char* path, FileModes mode, b8 binary, FileHandle* outHandle) {
-    outHandle->isValid = false;
-    outHandle->handle = 0;
-    const char* modeStr;
+b8 filesystem_open(const char* path, file_modes mode, b8 binary, file_handle* out_handle) {
+    out_handle->is_valid = false;
+    out_handle->handle = 0;
+    const char* mode_str;
 
     if ((mode & FILE_MODE_READ) != 0 && (mode & FILE_MODE_WRITE) != 0) {
-        modeStr = binary ? "w+b" : "w+";
+        mode_str = binary ? "w+b" : "w+";
     } else if ((mode & FILE_MODE_READ) != 0 && (mode & FILE_MODE_WRITE) == 0) {
-        modeStr = binary ? "rb" : "r";
+        mode_str = binary ? "rb" : "r";
     } else if ((mode & FILE_MODE_READ) == 0 && (mode & FILE_MODE_WRITE) != 0) {
-        modeStr = binary ? "wb" : "w";
+        mode_str = binary ? "wb" : "w";
     } else {
         KERROR("Invalid mode passed while trying to open file: '%s'", path);
         return false;
     }
 
     // Attempt to open the file.
-    FILE* file = fopen(path, modeStr);
+    FILE* file = fopen(path, mode_str);
     if (!file) {
         KERROR("Error opening file: '%s'", path);
         return false;
     }
 
-    outHandle->handle = file;
-    outHandle->isValid = true;
+    out_handle->handle = file;
+    out_handle->is_valid = true;
 
     return true;
 }
 
-void FilesystemClose(FileHandle* handle) {
+void filesystem_close(file_handle* handle) {
     if (handle->handle) {
         fclose((FILE*)handle->handle);
         handle->handle = 0;
-        handle->isValid = false;
+        handle->is_valid = false;
     }
 }
 
-b8 FilesystemReadLine(FileHandle* handle, char** lineBuf) {
+b8 filesystem_read_line(file_handle* handle, char** line_buf) {
     if (handle->handle) {
         // Since we are reading a single line, it should be safe to assume this is enough characters.
-        char sBuffer[32000];
-        if (fgets(sBuffer, 32000, (FILE*)handle->handle) != 0) {
-            u64 length = strlen(sBuffer);
-            *lineBuf = Allocate((sizeof(char) * length) + 1, MEMORY_TAG_STRING);
-            strcpy(*lineBuf, sBuffer);
+        char buffer[32000];
+        if (fgets(buffer, 32000, (FILE*)handle->handle) != 0) {
+            u64 length = strlen(buffer);
+            *line_buf = kallocate((sizeof(char) * length) + 1, MEMORY_TAG_STRING);
+            strcpy(*line_buf, buffer);
             return true;
         }
     }
     return false;
 }
 
-b8 FilesystemWriteLine(FileHandle* handle, const char* text) {
+b8 filesystem_write_line(file_handle* handle, const char* text) {
     if (handle->handle) {
         i32 result = fputs(text, (FILE*)handle->handle);
         if (result != EOF) {
@@ -78,10 +78,10 @@ b8 FilesystemWriteLine(FileHandle* handle, const char* text) {
     return false;
 }
 
-b8 FilesystemRead(FileHandle* handle, u64 dataSize, void* outData, u64* outBytesRead) {
-    if (handle->handle && outData) {
-        *outBytesRead = fread(outData, 1, dataSize, (FILE*)handle->handle);
-        if (*outBytesRead != dataSize) {
+b8 filesystem_read(file_handle* handle, u64 data_size, void* out_data, u64* out_bytes_read) {
+    if (handle->handle && out_data) {
+        *out_bytes_read = fread(out_data, 1, data_size, (FILE*)handle->handle);
+        if (*out_bytes_read != data_size) {
             return false;
         }
         return true;
@@ -89,16 +89,16 @@ b8 FilesystemRead(FileHandle* handle, u64 dataSize, void* outData, u64* outBytes
     return false;
 }
 
-b8 FilesystemReadAllBytes(FileHandle* handle, u8** outBytes, u64* outBytesRead) {
+b8 filesystem_read_all_bytes(file_handle* handle, u8** out_bytes, u64* out_bytes_read) {
     if (handle->handle) {
         // File size
         fseek((FILE*)handle->handle, 0, SEEK_END);
         u64 size = ftell((FILE*)handle->handle);
         rewind((FILE*)handle->handle);
 
-        *outBytes = Allocate(sizeof(u8) * size, MEMORY_TAG_STRING);
-        *outBytesRead = fread(*outBytes, 1, size, (FILE*)handle->handle);
-        if (*outBytesRead != size) {
+        *out_bytes = kallocate(sizeof(u8) * size, MEMORY_TAG_STRING);
+        *out_bytes_read = fread(*out_bytes, 1, size, (FILE*)handle->handle);
+        if (*out_bytes_read != size) {
             return false;
         }
         return true;
@@ -106,10 +106,10 @@ b8 FilesystemReadAllBytes(FileHandle* handle, u8** outBytes, u64* outBytesRead) 
     return false;
 }
 
-b8 FilesystemWrite(FileHandle* handle, u64 dataSize, const void* data, u64* outBytesWritten) {
+b8 filesystem_write(file_handle* handle, u64 data_size, const void* data, u64* out_bytes_written) {
     if (handle->handle) {
-        *outBytesWritten = fwrite(data, 1, dataSize, (FILE*)handle->handle);
-        if (*outBytesWritten != dataSize) {
+        *out_bytes_written = fwrite(data, 1, data_size, (FILE*)handle->handle);
+        if (*out_bytes_written != data_size) {
             return false;
         }
         fflush((FILE*)handle->handle);

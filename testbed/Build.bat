@@ -10,7 +10,7 @@ FOR /R %%f in (*.c) do (
 
 REM echo "Files:" %cFilenames%
 
-SET assembly=GlypheGamesTestBed
+SET assembly=testbed
 SET compilerFlags=-g 
 REM -Wall -Werror
 SET includeFlags=-Isrc -I../engine/src/

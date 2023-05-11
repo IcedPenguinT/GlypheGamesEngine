@@ -1,266 +1,294 @@
-#include "Application.h"
-#include "GameTypes.h"
+#include "application.h"
+#include "game_types.h"
 
-#include "Logger.h"
-#include "platform/Platform.h"
-#include "core/Memory.h"
-#include "core/Event.h"
-#include "core/Input.h"
-#include "core/Clock.h"
+#include "logger.h"
 
-#include "memory/LinearAllocator.h"
+#include "platform/platform.h"
+#include "core/kmemory.h"
+#include "core/event.h"
+#include "core/input.h"
+#include "core/clock.h"
 
-#include "renderer/RendererFrontend.h"
+#include "memory/linear_allocator.h"
 
+#include "renderer/renderer_frontend.h"
 
-typedef struct ApplicationState {
-    Game* gameInst;
-    b8 isRunning;
-    b8 isSuspended;
+typedef struct application_state {
+    game* game_inst;
+    b8 is_running;
+    b8 is_suspended;
     i16 width;
     i16 height;
-    Clock clock;
-    f64 lastTime;
-    LinearAllocator systemsAllocator;
-    
-    u64 eventSystemMemoryRequirement;
-    void* eventSystemState;
+    clock clock;
+    f64 last_time;
+    linear_allocator systems_allocator;
 
-    u64 memorySystemMemoryRequirement;
-    void* memorySystemState;
+    u64 event_system_memory_requirement;
+    void* event_system_state;
 
-    u64 loggingSystemMemoryRequirement;
-    void* loggingSystemState;
+    u64 memory_system_memory_requirement;
+    void* memory_system_state;
 
-    u64 inputSystemMemoryRequirement;
-    void* inputSystemState;
+    u64 logging_system_memory_requirement;
+    void* logging_system_state;
 
-    u64 platformSystemMemoryRequirement;
-    void* platformSystemState;
+    u64 input_system_memory_requirement;
+    void* input_system_state;
 
-    u64 rendererSystemMemoryRequirement;
-    void* rendererSystemState;
-} ApplicationState;
+    u64 platform_system_memory_requirement;
+    void* platform_system_state;
 
-static ApplicationState* appState;
+    u64 renderer_system_memory_requirement;
+    void* renderer_system_state;
 
-b8 ApplicationOnEvent(u16 code, void* sender, void* listnerInst, EventContext context);
-b8 ApplicationOnKey(u16 code, void* sender, void* listnerInst, EventContext context);
-b8 ApplicationOnResized(u16 code, void* sender, void* listnerInst, EventContext context);
+} application_state;
 
+static application_state* app_state;
 
-b8 CreateApplication(Game* gameInst){
-    if (gameInst->applicationState){
-        KERROR("CreateApplication called more than once.");
+// Event handlers
+b8 application_on_event(u16 code, void* sender, void* listener_inst, event_context context);
+b8 application_on_key(u16 code, void* sender, void* listener_inst, event_context context);
+b8 application_on_resized(u16 code, void* sender, void* listener_inst, event_context context);
+
+b8 application_create(game* game_inst) {
+    if (game_inst->application_state) {
+        KERROR("application_create called more than once.");
         return false;
     }
 
-    gameInst->applicationState = Allocate(sizeof(ApplicationState), MEMORY_TAG_APPLICATION);
-    appState = gameInst->applicationState;
-    appState->gameInst = gameInst;
-    appState->isRunning = false;
-    appState->isSuspended = false;
+    game_inst->application_state = kallocate(sizeof(application_state), MEMORY_TAG_APPLICATION);
+    app_state = game_inst->application_state;
+    app_state->game_inst = game_inst;
+    app_state->is_running = false;
+    app_state->is_suspended = false;
 
-    u64 systemAllocatorTotalSize = 64 * 1024 * 1024; // 64mb
-    LinearAllocatorCreate(systemAllocatorTotalSize, 0, &appState->systemsAllocator);
+    u64 systems_allocator_total_size = 64 * 1024 * 1024;  // 64 mb
+    linear_allocator_create(systems_allocator_total_size, 0, &app_state->systems_allocator);
 
-    //Events
-    EventSystemInitialize(&appState->eventSystemMemoryRequirement, 0);
-    appState->eventSystemState = LinearAllocatorAllocate(&appState->systemsAllocator, appState->eventSystemMemoryRequirement);
-    EventSystemInitialize(&appState->eventSystemMemoryRequirement, appState->eventSystemState);
+    // Initialize subsystems.
+
+    // Events
+    event_system_initialize(&app_state->event_system_memory_requirement, 0);
+    app_state->event_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->event_system_memory_requirement);
+    event_system_initialize(&app_state->event_system_memory_requirement, app_state->event_system_state);
 
     // Memory
-    MemorySystemInitialize(&appState->memorySystemMemoryRequirement, 0);
-    appState->memorySystemState = LinearAllocatorAllocate(&appState->systemsAllocator, appState->memorySystemMemoryRequirement);
-    MemorySystemInitialize(&appState->memorySystemMemoryRequirement, appState->memorySystemState);
+    memory_system_initialize(&app_state->memory_system_memory_requirement, 0);
+    app_state->memory_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->memory_system_memory_requirement);
+    memory_system_initialize(&app_state->memory_system_memory_requirement, app_state->memory_system_state);
 
     // Logging
-    InitializeLogging(&appState->loggingSystemMemoryRequirement, 0);
-    appState->loggingSystemState = LinearAllocatorAllocate(&appState->systemsAllocator, appState->loggingSystemMemoryRequirement);
-    if (!InitializeLogging(&appState->loggingSystemMemoryRequirement, appState->loggingSystemState)) {
-        KERROR("Failed to initialize the logging system. Shutting down...");
+    initialize_logging(&app_state->logging_system_memory_requirement, 0);
+    app_state->logging_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->logging_system_memory_requirement);
+    if (!initialize_logging(&app_state->logging_system_memory_requirement, app_state->logging_system_state)) {
+        KERROR("Failed to initialize logging system; shutting down.");
         return false;
     }
 
     // Input
-    InputSystemInitialize(&appState->inputSystemMemoryRequirement, 0);
-    appState->inputSystemState = LinearAllocatorAllocate(&appState->systemsAllocator, appState->inputSystemMemoryRequirement);
-    InputSystemInitialize(&appState->inputSystemMemoryRequirement, appState->inputSystemState);
+    input_system_initialize(&app_state->input_system_memory_requirement, 0);
+    app_state->input_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->input_system_memory_requirement);
+    input_system_initialize(&app_state->input_system_memory_requirement, app_state->input_system_state);
 
-    EventRegister(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
-    EventRegister(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
-    EventRegister(EVENT_CODE_BUTTON_RELEASED, 0, ApplicationOnKey);
-    EventRegister(EVENT_CODE_RESIZED, 0, ApplicationOnResized);
+    // Register for engine-level events.
+    event_register(EVENT_CODE_APPLICATION_QUIT, 0, application_on_event);
+    event_register(EVENT_CODE_KEY_PRESSED, 0, application_on_key);
+    event_register(EVENT_CODE_KEY_RELEASED, 0, application_on_key);
+    event_register(EVENT_CODE_RESIZED, 0, application_on_resized);
 
     // Platform
-    PlatformSystemStartup(&appState->platformSystemMemoryRequirement, 0, 0, 0, 0, 0, 0);
-    appState->platformSystemState = LinearAllocatorAllocate(&appState->systemsAllocator, appState->platformSystemMemoryRequirement);
-    if (!PlatformSystemStartup(
-            &appState->platformSystemMemoryRequirement,
-            appState->platformSystemState,
-            gameInst->config.name,
-            gameInst->config.startPosX,
-            gameInst->config.startPosY,
-            gameInst->config.startWidth,
-            gameInst->config.startHeight)) {
+    platform_system_startup(&app_state->platform_system_memory_requirement, 0, 0, 0, 0, 0, 0);
+    app_state->platform_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->platform_system_memory_requirement);
+    if (!platform_system_startup(
+            &app_state->platform_system_memory_requirement,
+            app_state->platform_system_state,
+            game_inst->app_config.name,
+            game_inst->app_config.start_pos_x,
+            game_inst->app_config.start_pos_y,
+            game_inst->app_config.start_width,
+            game_inst->app_config.start_height)) {
         return false;
     }
 
-    // Render System
-    RendererSystemInitialize(&appState->rendererSystemMemoryRequirement, 0, 0);
-    appState->rendererSystemState = LinearAllocatorAllocate(&appState->systemsAllocator, appState->rendererSystemMemoryRequirement);
-    if (!RendererSystemInitialize(&appState->rendererSystemMemoryRequirement, appState->rendererSystemState, gameInst->config.name)) {
+    // Renderer system
+    renderer_system_initialize(&app_state->renderer_system_memory_requirement, 0, 0);
+    app_state->renderer_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->renderer_system_memory_requirement);
+    if (!renderer_system_initialize(&app_state->renderer_system_memory_requirement, app_state->renderer_system_state, game_inst->app_config.name)) {
         KFATAL("Failed to initialize renderer. Aborting application.");
         return false;
     }
 
-    if (!appState->gameInst->initialize(appState->gameInst)){
-        KFATAL("Game failed to Initialize!");
+    // Initialize the game.
+    if (!app_state->game_inst->initialize(app_state->game_inst)) {
+        KFATAL("Game failed to initialize.");
         return false;
     }
 
     // Call resize once to ensure the proper size has been set.
-    appState->gameInst->onResize(appState->gameInst, appState->width, appState->height);
+    app_state->game_inst->on_resize(app_state->game_inst, app_state->width, app_state->height);
 
     return true;
 }
 
-b8 RunApplication() {
-    appState->isRunning = true;
-    ClockStart(&appState->clock);
-    ClockUpdate(&appState->clock);
-    appState->lastTime = appState->clock.elapsed;
-    
-    f64 runningTime = 0;
-    u8 frameCount = 0;
-    f64 targetFrameSeconds = 1.0f / 60;
+b8 application_run() {
+    app_state->is_running = true;
+    clock_start(&app_state->clock);
+    clock_update(&app_state->clock);
+    app_state->last_time = app_state->clock.elapsed;
+    f64 running_time = 0;
+    u8 frame_count = 0;
+    f64 target_frame_seconds = 1.0f / 60;
 
-    KINFO(GetMemoryUsageStr())
+    KINFO(get_memory_usage_str());
 
-    while (appState->isRunning) {
-        if (!PlatformPumpMessages())
-            appState->isRunning = false;
+    while (app_state->is_running) {
+        if (!platform_pump_messages()) {
+            app_state->is_running = false;
+        }
 
-        if (!appState->isSuspended) {
-            ClockUpdate(&appState->clock);
-            f64 currentTime = appState->clock.elapsed;
-            f64 delta = (currentTime - appState->lastTime);
-            f64 frameStartTime = PlatformGetAbsoluteTime();
+        if (!app_state->is_suspended) {
+            // Update clock and get delta time.
+            clock_update(&app_state->clock);
+            f64 current_time = app_state->clock.elapsed;
+            f64 delta = (current_time - app_state->last_time);
+            f64 frame_start_time = platform_get_absolute_time();
 
-            if (!appState->gameInst->update(appState->gameInst, (f32)delta)) {
+            if (!app_state->game_inst->update(app_state->game_inst, (f32)delta)) {
                 KFATAL("Game update failed, shutting down.");
-                appState->isRunning = false;
+                app_state->is_running = false;
                 break;
             }
 
-            if (!appState->gameInst->render(appState->gameInst, (f32)delta)) {
+            // Call the game's render routine.
+            if (!app_state->game_inst->render(app_state->game_inst, (f32)delta)) {
                 KFATAL("Game render failed, shutting down.");
-                appState->isRunning = false;
+                app_state->is_running = false;
                 break;
             }
 
-            //TODO: refactor packet creation
-            RenderPacket packet;
-            packet.deltaTime = delta;
-            RendererDrawFrame(&packet);
+            // TODO: refactor packet creation
+            render_packet packet;
+            packet.delta_time = delta;
+            renderer_draw_frame(&packet);
 
-            f64 frameEndTime = PlatformGetAbsoluteTime();
-            f64 frameElapsedTime = frameEndTime - frameStartTime;
-            runningTime += frameElapsedTime;
-            f64 remainingSeconds = targetFrameSeconds - frameElapsedTime;
+            // Figure out how long the frame took and, if below
+            f64 frame_end_time = platform_get_absolute_time();
+            f64 frame_elapsed_time = frame_end_time - frame_start_time;
+            running_time += frame_elapsed_time;
+            f64 remaining_seconds = target_frame_seconds - frame_elapsed_time;
 
-            if (remainingSeconds > 0){
-                u64 remainingMs = (remainingSeconds * 1000);
-                b8 limitFrames = false;
-                if (remainingMs > 0 && limitFrames)
-                    PlatformSleep(remainingMs - 1);
-                frameCount++;
+            if (remaining_seconds > 0) {
+                u64 remaining_ms = (remaining_seconds * 1000);
+
+                // If there is time left, give it back to the OS.
+                b8 limit_frames = false;
+                if (remaining_ms > 0 && limit_frames) {
+                    platform_sleep(remaining_ms - 1);
+                }
+
+                frame_count++;
             }
 
-            // Input will always be checked at the end.
-            InputUpdate(delta);
+            // NOTE: Input update/state copying should always be handled
+            // after any input should be recorded; I.E. before this line.
+            // As a safety, input is the last thing to be updated before
+            // this frame ends.
+            input_update(delta);
 
-            appState->lastTime = currentTime;
+            // Update last time
+            app_state->last_time = current_time;
         }
     }
-    appState->isRunning = false;
 
-    EventUnregister(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
-    EventUnregister(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
-    EventUnregister(EVENT_CODE_BUTTON_RELEASED, 0, ApplicationOnKey);
+    app_state->is_running = false;
 
-    InputSystemShutdown(appState->inputSystemState);
-    RendererSystemShutdown(appState->rendererSystemState);
-    PlatformSystemShutdown(appState->platformSystemState);
-    MemorySystemShutdown(appState->memorySystemState);
-    EventSystemShutdown(appState->eventSystemState);
-    
+    // Shutdown event system.
+    event_unregister(EVENT_CODE_APPLICATION_QUIT, 0, application_on_event);
+    event_unregister(EVENT_CODE_KEY_PRESSED, 0, application_on_key);
+    event_unregister(EVENT_CODE_KEY_RELEASED, 0, application_on_key);
+
+    input_system_shutdown(app_state->input_system_state);
+
+    renderer_system_shutdown(app_state->renderer_system_state);
+
+    platform_system_shutdown(app_state->platform_system_state);
+
+    memory_system_shutdown(app_state->memory_system_state);
+
+    event_system_shutdown(app_state->event_system_state);
+
     return true;
 }
 
-void ApplicationGetFramebufferSize(u32* width, u32* height) {
-    *width = appState->width;
-    *height = appState->height;
+void application_get_framebuffer_size(u32* width, u32* height) {
+    *width = app_state->width;
+    *height = app_state->height;
 }
 
-b8 ApplicationOnEvent(u16 code, void* sender, void* listnerInst, EventContext context) {
+b8 application_on_event(u16 code, void* sender, void* listener_inst, event_context context) {
     switch (code) {
         case EVENT_CODE_APPLICATION_QUIT: {
-            KINFO("EVENT_CODE_APPLICATION_QUIT received, shutting down.\n");
-            appState->isRunning = false;
+            KINFO("EVENT_CODE_APPLICATION_QUIT recieved, shutting down.\n");
+            app_state->is_running = false;
             return true;
         }
     }
+
     return false;
 }
 
-b8 ApplicationOnKey(u16 code, void* sender, void* listnerInst, EventContext context) {
+b8 application_on_key(u16 code, void* sender, void* listener_inst, event_context context) {
     if (code == EVENT_CODE_KEY_PRESSED) {
-        u16 keyCode = context.Data.u16[0];
-        if (keyCode == KEY_ESCAPE) {
-            EventContext data = {};
-            EventFire(EVENT_CODE_APPLICATION_QUIT, 0, data);
+        u16 key_code = context.data.u16[0];
+        if (key_code == KEY_ESCAPE) {
+            // NOTE: Technically firing an event to itself, but there may be other listeners.
+            event_context data = {};
+            event_fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
+
+            // Block anything else from processing this.
             return true;
-        } else if (keyCode == KEY_A) {
-            KDEBUG("Explicit - A key Pressed!");
+        } else if (key_code == KEY_A) {
+            // Example on checking for a key
+            KDEBUG("Explicit - A key pressed!");
         } else {
-            KDEBUG ("'%c' key pressed in window.", keyCode);
+            KDEBUG("'%c' key pressed in window.", key_code);
         }
     } else if (code == EVENT_CODE_KEY_RELEASED) {
-        u16 keyCode = context.Data.u16[0];
-        if (keyCode == KEY_B){
+        u16 key_code = context.data.u16[0];
+        if (key_code == KEY_B) {
+            // Example on checking for a key
             KDEBUG("Explicit - B key released!");
         } else {
-            KDEBUG("'%c' key released in window.", keyCode);
+            KDEBUG("'%c' key released in window.", key_code);
         }
     }
     return false;
 }
 
-b8 ApplicationOnResized(u16 code, void* sender, void* listnerInst, EventContext context) {
+b8 application_on_resized(u16 code, void* sender, void* listener_inst, event_context context) {
     if (code == EVENT_CODE_RESIZED) {
-        u16 width = context.Data.u16[0];
-        u16 height = context.Data.u16[1];
+        u16 width = context.data.u16[0];
+        u16 height = context.data.u16[1];
 
         // Check if different. If so, trigger a resize event.
-        if (width != appState->width || height != appState->height) {
-            appState->width = width;
-            appState->height = height;
+        if (width != app_state->width || height != app_state->height) {
+            app_state->width = width;
+            app_state->height = height;
 
             KDEBUG("Window resize: %i, %i", width, height);
 
             // Handle minimization
             if (width == 0 || height == 0) {
                 KINFO("Window minimized, suspending application.");
-                appState->isSuspended = true;
+                app_state->is_suspended = true;
                 return true;
             } else {
-                if (appState->isSuspended) {
+                if (app_state->is_suspended) {
                     KINFO("Window restored, resuming application.");
-                    appState->isSuspended = false;
+                    app_state->is_suspended = false;
                 }
-                appState->gameInst->onResize(appState->gameInst, width, height);
-                RendererOnResized(width, height);
+                app_state->game_inst->on_resize(app_state->game_inst, width, height);
+                renderer_on_resized(width, height);
             }
         }
     }

@@ -1,16 +1,18 @@
-#include "Clock.h"
-#include "platform/Platform.h"
+#include "clock.h"
 
-KAPI void ClockUpdate(Clock* clock) {
-    if (clock->startTime != 0) 
-        clock->elapsed = PlatformGetAbsoluteTime() - clock->startTime;
+#include "platform/platform.h"
+
+void clock_update(clock* clock) {
+    if (clock->start_time != 0) {
+        clock->elapsed = platform_get_absolute_time() - clock->start_time;
+    }
 }
 
-KAPI void ClockStart(Clock* clock) {
-    clock->startTime = PlatformGetAbsoluteTime();
+void clock_start(clock* clock) {
+    clock->start_time = platform_get_absolute_time();
     clock->elapsed = 0;
 }
 
-KAPI void ClockStop(Clock* clock) {
-    clock->startTime = 0;
+void clock_stop(clock* clock) {
+    clock->start_time = 0;
 }
